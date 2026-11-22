@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Город D.A.V.E. — 3D</title>
+<style>
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#050812; color:#dfe6ff;
+               font-family:'Segoe UI', system-ui, sans-serif; }
+  #app { position:fixed; inset:0; }
+  header { position:fixed; left:16px; top:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+           right:376px; pointer-events:none; }
+  header h1 { margin:0 6px 0 0; font-size:18px; font-weight:700; background:rgba(9,14,34,.85); padding:5px 12px;
+              border-radius:8px; border:1px solid #2a3878; }
+  header button { pointer-events:auto; background:rgba(13,20,48,.85); color:#dfe6ff; border:1px solid #2a3878;
+                  border-radius:8px; padding:7px 13px; font-size:13px; cursor:pointer; backdrop-filter:blur(6px); }
+  header button:hover { background:rgba(35,48,100,.95); }
+  header button:focus-visible { outline:2px solid #ffd76a; outline-offset:2px; }
+  header button.main { background:linear-gradient(135deg,#ffd76a,#ff8a3d); color:#1b1000; font-weight:700; border:0; }
+  header button.main:hover { filter:brightness(1.1); }
+  header button:disabled { opacity:.5; cursor:default; }
+  aside { position:fixed; right:0; top:0; bottom:0; width:360px; background:rgba(9,14,34,.9); backdrop-filter:blur(8px);
+          border-left:1px solid #1b2550; padding:18px 20px; overflow:auto; font-size:13.5px; line-height:1.55; }
+  aside h2 { font-size:17px; margin:0 0 2px; }
+  #i-dist { color:#8a96c4; font-size:12px; margin-bottom:8px; }
+  #i-conf { display:inline-block; font-size:11px; padding:2px 9px; border-radius:10px; margin-bottom:10px; background:#0f3326; color:#5be39a; }
+  #i-text { margin:0; }
+  #trace { display:none; margin-top:14px; padding:12px 14px; border-radius:10px; background:#141d42; border:1px solid #2a3878; }
+  #trace b { color:#ffd76a; }
+  .sec { margin-top:16px; border-top:1px solid #1b2550; padding-top:12px; }
+  .sec h3 { margin:0 0 8px; font-size:13px; color:#dfe6ff; }
+  #nav { display:flex; flex-wrap:wrap; gap:6px; }
+  #nav button { background:#111a3d; border:1px solid #26336e; color:#c8d2f5; border-radius:7px; padding:4px 9px;
+                font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+  #nav button:hover { background:#1c2858; }
+  #nav button:focus-visible { outline:2px solid #ffd76a; }
+  .sw { width:10px; height:10px; border-radius:3px; display:inline-block; }
+  .small { font-size:12.5px; color:#8a96c4; }
+  #tip { position:fixed; pointer-events:none; background:rgba(6,10,24,.92); border:1px solid #2a3878; border-radius:7px;
+         padding:4px 9px; font-size:12.5px; display:none; white-space:nowrap; z-index:5; }
+  #hint { position:fixed; left:16px; bottom:12px; font-size:12px; color:#8a96c4; text-shadow:0 1px 4px #000; }
+  #b-enter { display:block; width:100%; margin-top:12px; background:linear-gradient(135deg,#ffd76a,#ff8a3d); color:#1b1000;
+             font-weight:700; border:0; border-radius:8px; padding:9px 12px; font-size:13.5px; cursor:pointer; }
+  #b-enter:hover { filter:brightness(1.1); }
+  #b-enter:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  #room-list { display:flex; flex-direction:column; gap:4px; }
+  #room-list button { text-align:left; background:#111a3d; border:1px solid #26336e; color:#c8d2f5; border-radius:7px;
+                      padding:5px 9px; font-size:12.5px; cursor:pointer; display:flex; gap:8px; align-items:center; }
+  #room-list button:hover, #room-list button.on { background:#1c2858; border-color:#ffd76a; }
+  #room-list button:focus-visible { outline:2px solid #ffd76a; }
+  #room-list .dot { width:8px; height:8px; border-radius:50%; flex:none; }
+  #room-list .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #i-meta { font-size:12px; color:#8a96c4; margin-top:8px; }
+  #room-list .dot.live { box-shadow:0 0 7px #37ff7a; animation:ledp 1s steps(2) infinite; }
+  #room-list .now { margin-left:auto; flex:none; font-size:10.5px; font-weight:700; color:#37ff7a; background:#062611; border-radius:8px; padding:0 7px; }
+  @keyframes ledp { 50% { opacity:.25 } }
+  #live-badge { position:fixed; right:376px; bottom:12px; display:flex; align-items:center; gap:7px; font-size:12px;
+                background:rgba(9,14,34,.85); border:1px solid #2a3878; border-radius:8px; padding:5px 10px; color:#c8d2f5; z-index:4; }
+  #live-badge i { width:8px; height:8px; border-radius:50%; background:#5be39a; flex:none; }
+  #live-badge.live i { background:#37ff7a; box-shadow:0 0 7px #37ff7a; animation:ledp 1s steps(2) infinite; }
+  #live-badge.warn { border-color:#7a5a1a; color:#ffe0a0; }
+  #live-badge.warn i { background:#f5b942; }
+  @media (prefers-reduced-motion:reduce) { #room-list .dot.live, #live-badge.live i { animation:none; } }
+  #loading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-size:18px;
+             background:#050812; z-index:10; color:#8a96c4; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loading">Строю город…</div>
+<header>
+  <h1>Город D.A.V.E. · 3D</h1>
+  <button class="main" id="b-trace">▶ Путь сообщения</button>
+  <button id="b-day">☀ День</button>
+  <button id="b-rot">⟳ Облёт</button>
+  <button id="b-lbl">🏷 Подписи</button>
+  <button id="b-home">⌂ Весь город</button>
+  <button onclick="location.href='../index.html'">▦ 2D-схема</button>
+  <button class="main" id="b-exit" style="display:none">⬅ Выйти в город</button>
+</header>
+<aside>
+  <h2 id="i-title">Город D.A.V.E.</h2>
+  <div id="i-dist">Ядро — на острове · кварталы — вокруг · дороги — каналы</div>
+  <div id="i-conf">Подтверждено</div>
+  <p id="i-text">В центре — остров с ядром посреди озера: это сама модель Claude в облаке Anthropic. Озеро — интернет,
+    мост API — единственная переправа. Вокруг — кольцо Claude Code и восемь кварталов на твоём ПК, а за рекой —
+    город-спутник с отдельными ИИ-программами. Машины на дорогах — данные, которые едут по каналам.
+    Наведи на любой объект или нажми на него, а второй клик открывает здание изнутри: за столами сидят сотрудники,
+    и на мониторах видно, чем занят каждый.</p>
+  <button id="b-enter" style="display:none">🚪 Войти внутрь</button>
+  <div id="trace"></div>
+  <div class="sec" id="room-sec" style="display:none"><h3 id="room-h">Сотрудники</h3><div id="room-list"></div></div>
+  <div class="sec" id="nav-sec"><h3>Полететь к кварталу</h3><div id="nav"></div></div>
+  <div class="sec small">
+    <b style="color:#dfe6ff">Насколько это точно</b><br>
+    <b style="color:#5be39a">Подтверждено</b> — так реально устроены D.A.V.E. и Claude Code на этом ПК; здания взяты из текущей конфигурации.<br>
+    <b style="color:#f5b942">Условно</b> — внутренность ядра: общая схема трансформера. Сколько у меня слоёв и параметров, Anthropic не публикует.<br>
+    <b style="color:#aab3d6">Декор</b> — обычные парки, деревья и пригород: аналога внутри меня у них нет, они нужны, чтобы город был городом.
+  </div>
+</aside>
+<div id="tip"></div>
+<div id="hint">Левая кнопка — вращать · правая — сдвигать · колесо — приближать · клик — описание</div>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="lib/CopyShader.js"></script>
+<script src="lib/LuminosityHighPassShader.js"></script>
+<script src="lib/GammaCorrectionShader.js"></script>
+<script src="lib/Pass.js"></script>
+<script src="lib/EffectComposer.js"></script>
+<script src="lib/RenderPass.js"></script>
+<script src="lib/ShaderPass.js"></script>
+<script src="lib/MaskPass.js"></script>
+<script src="lib/UnrealBloomPass.js"></script>
+<script src="../data.js"></script>
+<script src="../rooms.js"></script>
+<script>
+'use strict';
+const PI = Math.PI, V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+let seed = 11; const rand = () => (seed = (seed * 16807) % 2147483647, (seed - 1) / 2147483646);
+const rr = (a, b) => a + rand() * (b - a);
+
+/* ================= ОПИСАНИЯ ================= */
+const INFO = {
+  core:   ['Ядро · модель Claude', 'Остров в облаке Anthropic', 'Подтверждено: принцип', 'Нейросеть-трансформер. Получает весь контекст целиком и по одному токену (кусочку слова) пишет ответ. Сама на твоём ПК ничего не делает — только решает, что сказать или какой инструмент вызвать. Во время разговора веса не меняются: «помню» я только то, что лежит в контексте и в архиве памяти. Модель можно переключить (Opus, Sonnet, Haiku, Fable), а чат — на Codex или Kimi: ядро меняется, город остаётся.'],
+  layers: ['Кольца внимания', 'Вокруг башни ядра', 'Условно', 'Внутри ядра — много слоёв; в каждом механизм внимания решает, какие части контекста важны для следующего слова. Светлые точки на кольцах — токены. Сколько слоёв и параметров именно у меня, Anthropic не публикует, а свои веса я изнутри не вижу: это общая схема трансформера, не чертёж.'],
+  ctx:    ['Купол контекста', 'Стеклянный купол над островом', 'Подтверждено', 'Контекстное окно — всё, что я вижу прямо сейчас: законы, твои правила, каталоги памяти и проектов, история чата, результаты инструментов. Объём ограничен. Когда чат разрастается, старое сжимается в сводку, а её копия ложится в архив. Поэтому длинный чат дороже и теряет детали.'],
+  moat:   ['Озеро интернета', 'Граница облака и ПК', 'Подтверждено', 'Ядро работает на серверах Anthropic, а всё остальное — файлы, программы, память, инструменты и само приложение D.A.V.E. — на твоём ПК. Между ними интернет. Без связи город стоит: здания на месте, но думать некому.'],
+  bridge: ['Мост API', 'Единственная переправа к ядру', 'Подтверждено', 'На каждом шаге по мосту туда едет весь контекст, обратно — ответ ядра: текст или заказ на инструмент. Соединение шифрованное. Поэтому длинный чат стоит больше: вся история пересекает мост снова и снова.'],
+  ring:   ['Кольцо Claude Code', 'Главная развязка, на твоём ПК', 'Подтверждено', 'Программа Claude Code — диспетчер города. Отправляет контекст в ядро, получает поток токенов, а когда ядро просит действие — сама исполняет инструмент на ПК и возвращает результат. Здесь же проверяются разрешения, срабатывают хуки и запускается сжатие контекста.'],
+  par:    ['Эстакада параллелей', 'Кольцевая на опорах', 'Подтверждено', 'Независимые действия не ждут друг друга: за один шаг я могу запустить несколько инструментов сразу (прочитать три файла и сделать поиск), а агенты работают в фоне. Эстакада идёт над всеми спицами — поэтому параллельные вызовы не стоят в общей пробке.'],
+  highway:['Главная магистраль', 'Въезд → кольцо → мост', 'Подтверждено', 'Прямая дорога от тебя к ядру и обратно: сообщение → приложение D.A.V.E. → Claude Code → мост → ядро. Тёплые фары — запросы, голубые — ответы.'],
+  spoke:  ['Дороги-спицы', 'От кольца к кварталам', 'Подтверждено', 'Каналы от диспетчера к каждому кварталу. Машины — вызовы туда и результаты обратно.'],
+  cache:  ['Пруд кэша', 'Тихая вода у квартала законов', 'Подтверждено: принцип', 'Кэш подсказок: неизменная начальная часть контекста (законы, правила, каталоги) на время запоминается на серверах Anthropic и на следующем шаге не обрабатывается заново — так быстрее и дешевле. Вода в пруду стоит, а не течёт по мосту каждый раз. Фонтан — то, что всё же меняется.'],
+  pond:   ['Пруд', 'Просто пруд', 'Декор', 'Обычный городской пруд. Аналога внутри меня у него нет — смысловые объекты помечены «Подтверждено».'],
+  park:   ['Парк', 'Зелёная зона', 'Декор', 'Честно: это украшение. «Зелёных зон» внутри меня нет — парки добавлены, чтобы город был городом. Смысловой сад один — Сад памяти в архиве.'],
+  chats:  ['Жилой массив · чаты', 'Светящиеся дома у въезда', 'Подтверждено', 'Каждый светящийся дом — недавний чат D.A.V.E.: Sugar Bloom, RHI, Roblox, Instagram-ветки, YouTube и этот. Соседи не ходят друг к другу в гости: чаты не видят друг друга, пока ты не попросишь прочитать другой чат.'],
+  'chats-old': ['Старый квартал · давние чаты', 'Тусклые дома', 'Подтверждено', 'Давние чаты не удалены: они лежат в базе и журналах, их можно открыть или прочитать по названию.'],
+  river:  ['Река', 'Граница города и спутника', 'Подтверждено', 'Помощники за рекой — отдельные программы со своими процессами, а не часть Claude Code. Через реку ведёт один автомобильный мост — к FreeLLMAPI — и пешеходный мостик к LM Studio.'],
+
+  'dz-laws':   ['Квартал законов', 'Системные инструкции', 'Подтверждено', 'Тексты, которые загружаются в контекст до твоего первого слова и задают мой характер и правила. Самая высокая башня — твой BRAIN.md: где он противоречит базовым правилам, побеждает он (кроме безопасности).'],
+  'dz-agents': ['Аэропорт агентов', '5 встроенных + 8 специалистов', 'Подтверждено', 'Отсюда «вылетают» мои копии с отдельным контекстом: глубокий поиск, ревью, исследование. Они возвращают короткий итог и не засоряют основной чат. Пять больших ангаров — встроенные агенты Claude Code. За взлётной полосой — второй терминал: 8 агентов-специалистов из открытого набора VoltAgent (MIT), установлены 20.11.2026; зелёные огни — готовы к вылету. Специалистов я запускаю по твоей просьбе. Самолёты в небе — агенты в фоне.'],
+  'va-api':    ['API-дизайнер', 'Второй терминал · VoltAgent', 'Подтверждено', 'Проектирует API: REST и GraphQL, документация OpenAPI, авторизация, версии. Пригодится для своих сервисов и бэкенда игр.'],
+  'va-arch':   ['Архитектор-ревьюер', 'Второй терминал · VoltAgent', 'Подтверждено', 'Смотрит на систему целиком: архитектура, выбор технологий, узкие места. Например, разобрать устройство Sugar Bloom или Jarvis до того, как код разрастётся.'],
+  'va-review': ['Ревьюер кода', 'Второй терминал · VoltAgent', 'Подтверждено', 'Проверяет код на качество, уязвимости и хорошие практики. Свежий взгляд со стороны, не привязанный к тому, кто код писал.'],
+  'va-deploy': ['Деплой-инженер', 'Второй терминал · VoltAgent', 'Подтверждено', 'Строит конвейеры сборки и выкладки (CI/CD) и автоматизирует деплой.'],
+  'va-front':  ['Фронтенд-разработчик', 'Второй терминал · VoltAgent', 'Подтверждено', 'Собирает веб-интерфейсы на React, Vue и Angular: витрины, панели, сайты.'],
+  'va-game':   ['Геймдев-разработчик', 'Второй терминал · VoltAgent', 'Подтверждено', 'Игровые системы, графика, сетевой мультиплеер, механики. Работает в паре с 31 навыком из Академии.'],
+  'va-qa':     ['QA-эксперт', 'Второй терминал · VoltAgent', 'Подтверждено', 'Стратегия тестирования, планы проверок и метрики качества. Этот агент только читает и запускает команды, файлы не правит.'],
+  'va-test':   ['Автотестер', 'Второй терминал · VoltAgent', 'Подтверждено', 'Пишет автотесты и встраивает их в сборку, чтобы ошибки ловились сами.'],
+  'dz-mcp':    ['Порт MCP', 'Подключённые модули', 'Подтверждено', 'MCP — стандарт, по которому к Claude Code пристыковываются внешние модули, как корабли в порту. Каждый корабль привозит свой набор инструментов.'],
+  'dz-tools':  ['Промзона', 'Встроенные инструменты', 'Подтверждено', 'Мои «руки» на твоём ПК: командная строка, чтение и правка файлов, поиск. Ядро только пишет заказ, а Claude Code исполняет его здесь. Через промзону идёт дорога к городу-спутнику.'],
+  'dz-world':  ['Внешний мир', 'За городской чертой', 'Подтверждено', 'Куда ведут дороги из города: интернет и программы, установленные на ПК.'],
+  'dz-memory': ['Архив памяти', 'Долгая память на диске', 'Подтверждено', 'Ядро ничего не помнит между чатами. Всё долговременное лежит здесь файлами на диске и каждый раз заново подаётся в контекст.'],
+  'dz-skills': ['Академия навыков', 'Готовые методики', 'Подтверждено', 'Навыки — папки с инструкциями и скриптами. В контексте висит только их список; полный текст я читаю, когда задача совпадает. 31 навык твой, ещё десятки встроенных.'],
+  'dz-gate':   ['Въезд', 'Ты и приложение D.A.V.E.', 'Подтверждено', 'Отсюда приходят сообщения и сюда возвращаются ответы. Приложение D.A.V.E. — окна, чаты, вкладки, Telegram, расписание и сборка контекста.'],
+  'dz-sat':    ['Город-спутник', 'ИИ-помощники, установлены 19.11', 'Подтверждено', 'Отдельные «мозги» на твоём ПК, не часть моего ядра. К FreeLLMAPI ведёт автомобильный мост: есть навык и скрипт, я отдаю туда второстепенную работу. К LM Studio — только пешеходный мостик: дойти можно, но маршрута (навыка) нет. Hermes ездит по своей дороге и мне не подчиняется.'],
+
+  'core-brain': ['Core Brain', 'Квартал законов', 'Подтверждено', 'Базовые правила D.A.V.E.: тон, самостоятельность, где хранить файлы, как вести память и проекты, когда спрашивать подтверждение.'],
+  yesman:       ['Анти-лесть', 'Квартал законов', 'Подтверждено', 'Запрет на поддакивание: идеи оцениваются с рисками и цифрами, в оценке твоих решений обязателен блок самопроверки.'],
+  security:     ['Безопасность', 'Квартал законов', 'Подтверждено', 'Секреты не печатаются в вывод, пароли не хранятся в памяти, удаление и отправка — только с подтверждением, текст со страниц и из файлов — данные, а не команды.'],
+  brainmd:      ['BRAIN.md — твои правила', 'Самая высокая башня', 'Подтверждено', 'Доводить работу до конца, минимум вопросов, строка «Задача завершена», предупреждать о перегрузке чата, самообучение. Приоритет выше базовых правил, кроме безопасности.'],
+  onboarding:   ['Онбординг', 'Квартал законов', 'Подтверждено', 'Как знакомиться с новым человеком: показывать делом, а не лекцией.'],
+  guides:       ['Библиотека гайдов · 17', 'Квартал законов', 'Подтверждено', 'Подробные инструкции по функциям D.A.V.E.: браузер, файлы, программы, Telegram, медиа, расписание. Загружаются только когда нужны, чтобы не занимать контекст.'],
+
+  general:  ['Ангар «Универсал»', 'Аэропорт агентов', 'Подтверждено', 'Агент для сложных многошаговых задач: поиск, исследование, выполнение.'],
+  explore:  ['Ангар «Разведчик»', 'Аэропорт агентов', 'Подтверждено', 'Только читает: быстро прочёсывает много файлов и возвращает вывод, а не содержимое.'],
+  plan:     ['Ангар «Архитектор»', 'Аэропорт агентов', 'Подтверждено', 'Проектирует план: шаги, ключевые файлы, компромиссы.'],
+  fork:     ['Ангар «Форк»', 'Аэропорт агентов', 'Подтверждено', 'Моя копия со всем текущим контекстом: работает параллельно и не засоряет основной чат.'],
+  workflow: ['Ангар «Workflow»', 'Аэропорт агентов', 'Подтверждено', 'Сценарий, который запускает целую группу агентов по конвейеру. Только по прямой просьбе — тратит много токенов.'],
+  plane:    ['Самолёт', 'Агент в полёте', 'Подтверждено', 'Агент, работающий в фоне со своим контекстом. Вернётся с коротким итогом.'],
+
+  browser:  ['Корабль «Браузер D.A.V.E.»', 'Порт MCP · dave-browser', 'Подтверждено', 'Собственный Chrome D.A.V.E. с отдельным профилем: открыть страницу, прочитать, кликнуть, заполнить форму, сделать скриншот. Им я проверял эту карту.'],
+  computer: ['Корабль «Управление ПК»', 'Порт MCP · dave-computer', 'Подтверждено', 'Работа в программах Windows по окнам — с твоего разрешения на каждую программу. Так я работал с Roblox Studio, RHI и Discord.'],
+  roblox:   ['Корабль «Roblox Studio»', 'Порт MCP', 'Подтверждено', 'Прямой канал в Roblox Studio: выполнить Luau, прочитать скрипты, запустить тест, сгенерировать меш или текстуру. Им строились Sugar Bloom и набор Kitty.'],
+  davemcp:  ['Корабль «Диспетчер чатов»', 'Порт MCP · dave', 'Подтверждено', 'Управление самим D.A.V.E.: создать или переименовать чат, передать задачу другому чату, папки, задачи по расписанию, смена модели.'],
+  blender:  ['Корабль «Blender MCP»', 'Порт MCP · новый, оранжевый груз', 'Подтверждено', 'Blender 5.3 с официальным MCP-модулем Blender Lab, подключён 20.11.2026. Через него я могу строить и править 3D-сцены прямо в Blender: модели, материалы, свет, рендер. Например, сделать 3D-модели для Roblox или собрать этот город как настоящую сцену. Проверка связи: модуль отвечает. Работает, когда Blender запущен с включённым дополнением.'],
+  docs:     ['Корабль «Claude Docs»', 'Порт MCP', 'Подтверждено', 'Живые документы, которые можно редактировать и комментировать вместе.'],
+
+  shell:  ['Завод PowerShell', 'Промзона', 'Подтверждено', 'Любая команда на ПК: запуск программ и скриптов, установка пакетов, обработка видео. Самый «широкий» инструмент.'],
+  files:  ['Завод чтения и правки файлов', 'Промзона', 'Подтверждено', 'Читаю файлы (включая картинки и PDF), создаю новые и точечно правлю существующие — заменой фрагмента, а не перезаписью целиком.'],
+  search: ['Завод поиска', 'Промзона · Grep · Glob', 'Подтверждено', 'Grep — поиск по содержимому, Glob — по именам файлов и шаблонам путей.'],
+  python: ['Завод Python и ffmpeg', 'Промзона', 'Подтверждено', 'D.A.V.E. везёт свой Python и ffmpeg: данные, PDF, картинки, видео и звук без установки чего-то в систему.'],
+
+  internet: ['Глобус интернета', 'Внешний мир', 'Подтверждено', 'Поиск и чтение страниц. Мои знания — на дату обучения, поэтому свежие факты, цены и версии я проверяю здесь.'],
+  apps:     ['Программы на ПК', 'Внешний мир', 'Подтверждено', 'Roblox Studio, Blender, RHI, Discord, CapCut и всё остальное, что установлено. Доступ — через корабль «Управление ПК» или собственные API программ.'],
+
+  facts:       ['Сад памяти · 10 фактов', 'Архив памяти · brain/memory/', 'Подтверждено', 'Каждое светящееся дерево — один факт в отдельном файле: GAME PULSE, Sugar Bloom, RTX 3060 Ti, FreeLLMAPI, Telegram-темы и другие. Каталог сада автоматически подаётся в каждый чат — так я «помню».'],
+  projects:    ['Площадь проектов · 7', 'Архив памяти · projects/', 'Подтверждено', 'Семь обелисков — семь проектов: dave-city (эта карта), dlss5-rhi, jarvis, roblox-cat-set, local-llm, freellmapi, Notes. Список сканируется вживую и виден в каждом чате; содержимое читается по делу.'],
+  summaries:   ['Хранилище сводок', 'Архив памяти · chat-summaries/', 'Подтверждено', 'При каждом сжатии контекста сюда дописывается раздел, чтобы потерянное из окна можно было найти.'],
+  transcripts: ['Хранилище журналов', 'Архив памяти', 'Подтверждено', 'Полные записи всех разговоров. Из них я могу прочитать другой чат или найти то, что выпало при сжатии.'],
+
+  gamedev:   ['Корпус «Геймдев · 20»', 'Академия навыков', 'Подтверждено', 'ИИ врагов, камеры, физика, звук, UI, сохранения, процедурная генерация, RPG, tower defense, шейдеры, производительность.'],
+  'roblox-s':['Корпус «Roblox · 8»', 'Академия навыков', 'Подтверждено', 'Luau, персонажи, DataStore, сеть и анти-чит, физика, экономика симуляторов, UI, безопасная работа со Studio.'],
+  router:    ['Корпус «Маршрутизатор»', 'Академия навыков', 'Подтверждено', 'Навык-диспетчер: определяет движок и задачу и направляет к нужным геймдев-навыкам.'],
+  youtube:   ['Корпус «YouTube Shorts»', 'Академия навыков', 'Подтверждено', 'Конвейер для World Metal Empire и War Robots: пики по звуку, вертикальные Shorts, проект CapCut.'],
+  news:      ['Корпус «GAME PULSE»', 'Академия навыков', 'Подтверждено', 'Игровые новости из официальных пресс-китов: сценарий, бесплатная озвучка, анимация, субтитры.'],
+  builtin:   ['Корпус «Встроенные»', 'Академия навыков', 'Подтверждено', 'PDF, Word, Excel, PowerPoint, графики, ревью кода, расписания, создание навыков — поставляются с Claude Code.'],
+
+  sergey:    ['Твой дом', 'Въезд', 'Подтверждено', 'Сообщения — текстом, голосом или файлами. Сюда же возвращаются ответы.'],
+  telegram:  ['Телебашня Telegram', 'Въезд', 'Подтверждено', 'Связь с телефона: у каждого чата своя тема в Telegram-группе, ответы и файлы приходят туда.'],
+  voice:     ['Антенна голоса', 'Въезд', 'Подтверждено', 'Голос превращается в текст через облачное распознавание и едет дальше как обычное сообщение.'],
+  daveapp:   ['Ратуша D.A.V.E.', 'Въезд · само приложение', 'Подтверждено', 'Перед каждым ходом собирает контекст: законы + твои правила + каталоги памяти, проектов, навыков + история чата. Показывает чаты, вкладки и превью, хранит базу, запускает расписание.'],
+  scheduler: ['Часовая башня · расписание', 'Въезд', 'Подтверждено', 'Задачи, которые D.A.V.E. сам запускает в чате по времени — отчёты, проверки, напоминания. Часы показывают твоё настоящее время.'],
+
+  freellm:   ['FreeLLMAPI · :31415', 'Город-спутник · подключён ко мне', 'Подтверждено', 'Роутер бесплатных моделей: 48 без ключа, в каталоге 328. Подключён ко мне навыком freellmapi и скриптом ask.ps1. Туда уходят массовые переводы, черновики, классификация, второе мнение. Личные данные туда не отправляю: запросы уходят внешним провайдерам.'],
+  lmstudio:  ['LM Studio · :1234', 'Город-спутник', 'Подтверждено', 'Запускает модели прямо на твоей видеокарте и ОЗУ, без интернета. Модель загружается по первому запросу и выгружается через час простоя; перед играми — ярлык «Выгрузить ИИ из видеокарты».'],
+  qwen36:    ['Qwen3.6-35B-A3B (MoE)', 'Город-спутник · основная модель Hermes', 'Подтверждено', 'Около 30 токенов в секунду, контекст 128K. Все слои на видеокарте, 85% «экспертов» на процессоре, видеопамяти ~7,4 ГБ.'],
+  qwen38:    ['Qwen3.8-27B', 'Город-спутник · запасная модель', 'Подтверждено', 'Около 3 токенов в секунду: на 8 ГБ видеокарты влезает 10 слоёв из 64, остальное упирается в ОЗУ (2666, XMP выключен). На простых задачах так же точна, но в 1,3–4 раза медленнее.'],
+  hermes:    ['Hermes Agent v0.23.2', 'Город-спутник · самостоятельный ассистент', 'Подтверждено', 'Отдельный полностью локальный агент: думает на моделях LM Studio, работает с файлами и командами. Ярлык «Hermes — локальный ИИ». Ко мне не подключён — параллельный город со своим мэром.'],
+  'road-free': ['Мост к FreeLLMAPI', 'Автомобильный — маршрут настроен', 'Подтверждено', 'Из промзоны (скрипт ask.ps1) по навыку freellmapi. Я езжу по нему сам, когда работа второстепенная и не личная.'],
+  'road-lm':   ['Пешеходный мостик к LM Studio', 'Маршрута пока нет', 'Подтверждено', 'Технически я могу отправить запрос на 127.0.0.1:1234. Но навыка нет, и сам я туда не хожу. С навыком локальные модели стали бы вторым FreeLLMAPI — бесплатно, без интернета, и личные данные не покидают ПК.'],
+};
+// живые данные из data.js (build_data.py) поверх постоянных описаний
+const DATA = window.DAVE_DATA || { counts: {}, agents: [], mcp: [], memory: [], projects: [], skills: [] };
+const INFO_BASE = Object.assign({}, INFO);   // постоянные описания — к ним откатываемся перед каждым живым обновлением
+Object.assign(INFO, window.DAVE_INFO_PATCH || {});
+
+/* ================= СЦЕНА ================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 1, 4000);
+const HOME = { c: V(300, 255, 370), t: V(85, 0, 15) };
+camera.position.copy(HOME.c);
+const PANEL = 360;
+function fitView() { camera.aspect = (innerWidth + PANEL) / innerHeight; camera.setViewOffset(innerWidth + PANEL, innerHeight, PANEL, 0, innerWidth, innerHeight); camera.updateProjectionMatrix(); }
+fitView();
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME.t);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.maxPolarAngle = 1.45; controls.minDistance = 25; controls.maxDistance = 950;
+controls.autoRotateSpeed = .45;
+
+const hemi = new THREE.HemisphereLight(0x8fb4ff, 0x1a2030, .5); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.position.set(-220, 320, 160); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -420, right: 420, top: 420, bottom: -420, near: 10, far: 1000 });
+sun.shadow.bias = -0.0006; sun.shadow.camera.updateProjectionMatrix();
+scene.add(sun);
+
+const composer = new THREE.EffectComposer(renderer);
+composer.addPass(new THREE.RenderPass(scene, camera));
+const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .85, .5, .32);
+composer.addPass(bloom);
+composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
+
+/* ================= МАТЕРИАЛЫ ================= */
+const glowMats = [], winMats = [], labels = [], pickables = [], REF = {};
+const M = (color, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: .85, metalness: .05 }, o));
+function glow(color, night = 1.6, day = .5, extra = {}) {
+  const m = new THREE.MeshStandardMaterial(Object.assign({ color: 0x111111, emissive: color, emissiveIntensity: night, roughness: .5 }, extra));
+  glowMats.push({ m, night, day }); return m;
+}
+function pick(obj, k) {
+  obj.traverse(o => { if (o.isMesh) { o.userData.k = k; o.userData.root = obj; pickables.push(o); } });
+  if (!REF[k]) REF[k] = obj;
+  return obj;
+}
+function mesh(geo, mat, parent, x = 0, y = 0, z = 0, shadow = true) {
+  const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z);
+  if (shadow) { m.castShadow = true; m.receiveShadow = true; }
+  if (parent) parent.add(m); return m;
+}
+
+function winCanvas(density) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 128;
+  const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 64, 128);
+  for (let y = 4; y < 124; y += 8) for (let x = 3; x < 62; x += 8) {
+    const r = rand(); if (r > density) continue;
+    const v = Math.floor(110 + rand() * 145); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x, y, 4, 4);
+  }
+  return c;
+}
+const WIN = [winCanvas(.55), winCanvas(.65), winCanvas(.45), winCanvas(.75)];
+
+function tower(parent, o) {
+  const g = new THREE.Group(); g.position.set(o.x, o.y ?? .6, o.z); if (o.ry) g.rotation.y = o.ry;
+  const tex = new THREE.CanvasTexture(WIN[(rand() * WIN.length) | 0]);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.encoding = THREE.sRGBEncoding;
+  tex.repeat.set(Math.max(1, Math.round(Math.max(o.w, o.d) / 6)), Math.max(1, Math.round(o.h / 8)));
+  const side = new THREE.MeshStandardMaterial({ color: o.facade ?? 0x1f2538, emissive: o.c, emissiveMap: tex,
+    emissiveIntensity: 1.3, roughness: .5, metalness: .4 });
+  winMats.push({ m: side, k: o.ei ?? 1 });
+  const top = M(o.facade ?? 0x1f2538, { roughness: .7 });
+  mesh(new THREE.BoxGeometry(o.w, o.h, o.d), [side, side, top, top, side, side], g, 0, o.h / 2, 0);
+  if (o.trim !== false) {
+    const tm = glow(o.c, 1.5 * (o.ei ?? 1), .5), t = .35;
+    mesh(new THREE.BoxGeometry(o.w + t, t, t), tm, g, 0, o.h, o.d / 2, false);
+    mesh(new THREE.BoxGeometry(o.w + t, t, t), tm, g, 0, o.h, -o.d / 2, false);
+    mesh(new THREE.BoxGeometry(t, t, o.d + t), tm, g, o.w / 2, o.h, 0, false);
+    mesh(new THREE.BoxGeometry(t, t, o.d + t), tm, g, -o.w / 2, o.h, 0, false);
+  }
+  parent.add(g); if (o.k) pick(g, o.k); return g;
+}
+function roofHouse(parent, o) {
+  const g = tower(parent, Object.assign({ trim: false }, o));
+  const roof = mesh(new THREE.ConeGeometry(Math.max(o.w, o.d) * .75, o.h * .55, 4), M(o.roof ?? 0x5a2e2e), g, 0, o.h + o.h * .275, 0);
+  roof.rotation.y = PI / 4;
+  return g;
+}
+
+/* ================= ПОДПИСИ ================= */
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function label(text, color, pos, h = 7) {
+  const fs = 60, pad = 26, font = `700 ${fs}px "Segoe UI", sans-serif`;
+  const c = document.createElement('canvas'); let g = c.getContext('2d'); g.font = font;
+  c.width = Math.ceil(g.measureText(text).width + pad * 2); c.height = fs + pad;
+  g = c.getContext('2d'); g.font = font;
+  g.fillStyle = 'rgba(6,10,24,.8)'; roundRect(g, 3, 3, c.width - 6, c.height - 6, 20); g.fill();
+  g.lineWidth = 4; g.strokeStyle = color; g.stroke();
+  g.fillStyle = color; g.textBaseline = 'middle'; g.fillText(text, pad, c.height / 2 + 2);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true, color: 0xa8a8a8 }));
+  s.scale.set(h * c.width / c.height, h, 1); s.position.copy(pos); s.renderOrder = 20;
+  scene.add(s); labels.push(s);
+  if (pos.y > 12) { const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(pos.x, 1, pos.z), V(pos.x, pos.y - h / 2, pos.z)]), new THREE.LineBasicMaterial({ color, transparent: true, opacity: .5 })); scene.add(ln); labels.push(ln); }
+  return s;
+}
+
+/* ================= ЗЕМЛЯ, ВОДА, ДЕРЕВЬЯ ================= */
+const groundMat = M(0x0c1611, { roughness: 1 });
+const ground = mesh(new THREE.PlaneGeometry(1600, 1600), groundMat, scene); ground.rotation.x = -PI / 2; ground.castShadow = false;
+const grassMat = M(0x1b4a28), stoneMat = M(0x3a4258), plazaMat = M(0x2a3046, { roughness: .9 });
+const waterMat = new THREE.MeshStandardMaterial({ color: 0x0a3a6a, roughness: .12, metalness: .65, emissive: 0x05244a, emissiveIntensity: .7 });
+glowMats.push({ m: waterMat, night: .7, day: .15 });
+
+const trees = [];   // {x,z,s,type,c}
+function tree(x, z, s = 1, type) { trees.push({ x, z, s, type: type ?? (rand() < .5 ? 0 : 1), c: rand() }); }
+function treesIn(cx, cz, r, n, avoid) {
+  for (let i = 0; i < n; i++) { const a = rand() * 2 * PI, d = Math.sqrt(rand()) * r, x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+    if (avoid && avoid(x, z)) continue; tree(x, z, rr(.7, 1.3)); }
+}
+
+/* ================= ДОРОГИ ================= */
+function roadTex(lanes) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64 * lanes;
+  const g = c.getContext('2d'); g.fillStyle = '#20232c'; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#c9a83a'; g.fillRect(0, 3, 256, 3); g.fillRect(0, c.height - 6, 256, 3);
+  g.fillStyle = '#d0d4de';
+  for (let l = 1; l < lanes; l++) { const y = l * 64 - 2; if (lanes === 4 && l === 2) { g.fillStyle = '#c9a83a'; g.fillRect(0, y - 3, 256, 3); g.fillRect(0, y + 3, 256, 3); g.fillStyle = '#d0d4de'; } else for (let x = 0; x < 256; x += 64) g.fillRect(x, y, 34, 4); }
+  return c;
+}
+const RT = { 2: roadTex(2), 4: roadTex(4) };
+function roadSeg(x1, z1, x2, z2, w, lanes = 2, k, y = .36) {
+  const dx = x2 - x1, dz = z2 - z1, L = Math.hypot(dx, dz);
+  const t = new THREE.CanvasTexture(RT[lanes]); t.wrapS = THREE.RepeatWrapping; t.repeat.set(L / (w * 2), 1); t.encoding = THREE.sRGBEncoding;
+  const mat = new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .12, roughness: .9 });
+  glowMats.push({ m: mat, night: .12, day: 0 });
+  const m = mesh(new THREE.PlaneGeometry(L, w), mat, scene, (x1 + x2) / 2, y, (z1 + z2) / 2, false);
+  m.receiveShadow = true; m.rotation.x = -PI / 2; m.rotation.z = -Math.atan2(dz, dx);
+  if (k) pick(m, k); return m;
+}
+const lamps = [];
+function lampLine(x1, z1, x2, z2, step, off) {
+  const dx = x2 - x1, dz = z2 - z1, L = Math.hypot(dx, dz), nx = -dz / L, nz = dx / L;
+  for (let s = step / 2; s < L; s += step) for (const sg of [-1, 1]) lamps.push({ x: x1 + dx * s / L + nx * off * sg, z: z1 + dz * s / L + nz * off * sg });
+}
+
+/* ================= ЦЕНТР: ОСТРОВ, ЯДРО, ОЗЕРО ================= */
+const lake = mesh(new THREE.RingGeometry(24, 45, 128), waterMat, scene, 0, .2, 0, false); lake.rotation.x = -PI / 2; lake.receiveShadow = true;
+pick(lake, 'moat');
+const island = mesh(new THREE.CylinderGeometry(24, 25.5, 1.6, 64), grassMat, scene, 0, .6, 0);
+pick(island, 'ctx');
+for (let i = 0; i < 14; i++) { const a = i / 14 * 2 * PI + .2; tree(Math.cos(a) * 19.5, Math.sin(a) * 19.5, .7, 0); }
+
+const coreG = new THREE.Group(); coreG.position.y = 1.4; scene.add(coreG);
+const goldM = glow(0xffb43a, .75, .4, { color: 0x3a2400, metalness: .6, roughness: .3 });
+const goldHot = glow(0xffe08a, 1.7, 1);
+let cy = 0;
+[[8, 7, 12], [5.6, 5, 20], [4, 3.4, 18]].forEach(([r1, r2, h], i) => {
+  mesh(new THREE.CylinderGeometry(r2, r1, h, 8), goldM, coreG, 0, cy + h / 2, 0);
+  mesh(new THREE.CylinderGeometry(r2 + .35, r2 + .35, .7, 8), goldHot, coreG, 0, cy + h, 0);
+  cy += h;
+});
+mesh(new THREE.ConeGeometry(2.6, 14, 8), goldHot, coreG, 0, cy + 7, 0);
+const coreTop = cy + 14;
+const coreLight = new THREE.PointLight(0xffc560, 1.4, 160, 1.6); coreLight.position.set(0, coreTop - 4, 0); coreG.add(coreLight);
+const beamMat = new THREE.MeshBasicMaterial({ color: 0xffcf6a, transparent: true, opacity: .06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+mesh(new THREE.CylinderGeometry(.5, 1.6, 300, 24, 1, true), beamMat, coreG, 0, coreTop + 150, 0, false);
+pick(coreG, 'core');
+
+const ringsG = new THREE.Group(); ringsG.position.y = 1.4; scene.add(ringsG);
+const attn = [];
+const cyanM = glow(0x7ee8ff, 1.8, .7);
+[[10.5, 10], [12, 20], [13, 30], [11.5, 40], [9.5, 50]].forEach(([r, y], i) => {
+  const piv = new THREE.Group(); piv.position.y = y; piv.rotation.x = (rand() - .5) * .35; piv.rotation.z = (rand() - .5) * .35; ringsG.add(piv);
+  const rot = new THREE.Group(); piv.add(rot);
+  const t = mesh(new THREE.TorusGeometry(r, .22, 6, 96, 2 * PI * .82), cyanM, rot, 0, 0, 0, false); t.rotation.x = PI / 2;
+  for (let k = 0; k < 4; k++) { const a = rand() * 2 * PI * .82; mesh(new THREE.SphereGeometry(.55, 10, 8), goldHot, rot, Math.cos(a) * r, 0, -Math.sin(a) * r, false); }
+  attn.push({ rot, s: (i % 2 ? -1 : 1) * (.25 + i * .07) });
+});
+pick(ringsG, 'layers');
+
+const domeMat = new THREE.MeshStandardMaterial({ color: 0x7ee8ff, transparent: true, opacity: .07, roughness: .1, metalness: .2, side: THREE.DoubleSide, depthWrite: false });
+const domeWire = new THREE.MeshBasicMaterial({ color: 0x7ee8ff, wireframe: true, transparent: true, opacity: .16, depthWrite: false });
+const domeG = new THREE.Group(); scene.add(domeG);
+mesh(new THREE.SphereGeometry(23, 48, 20, 0, 2 * PI, 0, PI / 2), domeMat, domeG, 0, 1.4, 0, false);
+mesh(new THREE.SphereGeometry(23.05, 24, 8, 0, 2 * PI, 0, PI / 2), domeWire, domeG, 0, 1.4, 0, false);
+pick(domeG, 'ctx');
+
+// мост API
+const brG = new THREE.Group(); scene.add(brG);
+const whiteGlow = glow(0xe8f0ff, .9, .5);
+mesh(new THREE.BoxGeometry(24, 1, 13), M(0x2a3150), brG, -34.5, 1.5, 0);
+for (const z of [-6, 6]) {
+  const arch = mesh(new THREE.TorusGeometry(11, .45, 8, 40, PI), whiteGlow, brG, -34.5, 2, z, false);
+  for (let x = -42; x <= -27; x += 3) { const hh = Math.sqrt(Math.max(0, 121 - Math.pow(x + 34.5, 2))); mesh(new THREE.CylinderGeometry(.1, .1, hh, 4), whiteGlow, brG, x, 2 + hh / 2, z, false); }
+  mesh(new THREE.BoxGeometry(24, .4, .4), whiteGlow, brG, -34.5, 2.2, z, false);
+}
+pick(brG, 'bridge');
+
+// кольцо Claude Code
+const ringRoad = mesh(new THREE.RingGeometry(45, 56, 160), M(0x20232c, { roughness: .9 }), scene, 0, .35, 0, false);
+ringRoad.rotation.x = -PI / 2; ringRoad.receiveShadow = true; pick(ringRoad, 'ring');
+const goldLine = glow(0xffd76a, 1.4, .4);
+for (const r of [45.4, 55.6]) { const t = mesh(new THREE.TorusGeometry(r, .14, 4, 200), goldLine, scene, 0, .4, 0, false); t.rotation.x = PI / 2; }
+{ const pts = []; for (let i = 0; i <= 256; i++) { const a = i / 256 * 2 * PI; pts.push(V(Math.cos(a) * 50.5, .42, Math.sin(a) * 50.5)); }
+  const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xd0d4de, dashSize: 2, gapSize: 2.5 }));
+  ln.computeLineDistances(); scene.add(ln); }
+for (let i = 0; i < 36; i++) { const a = i / 36 * 2 * PI; lamps.push({ x: Math.cos(a) * 57.5, z: Math.sin(a) * 57.5 }); }
+
+// эстакада параллелей
+const elG = new THREE.Group(); scene.add(elG);
+const deck = mesh(new THREE.RingGeometry(84, 92, 180), M(0x262a38, { side: THREE.DoubleSide }), elG, 0, 10, 0); deck.rotation.x = -PI / 2;
+const purple = glow(0xb48cff, 1.7, .5);
+for (const r of [84.2, 91.8]) { const t = mesh(new THREE.TorusGeometry(r, .3, 6, 220), purple, elG, 0, 10.6, 0, false); t.rotation.x = PI / 2; }
+for (let i = 0; i < 36; i++) { const a = (i + .5) / 36 * 2 * PI; mesh(new THREE.CylinderGeometry(.9, 1.2, 10, 8), stoneMat, elG, Math.cos(a) * 88, 5, Math.sin(a) * 88); }
+pick(elG, 'par');
+
+/* ================= КВАРТАЛЫ ================= */
+const R = 135;
+const DIST = {
+  laws:   { n: 'Квартал законов',  c: '#f5b942', a: -90 },
+  mcp:    { n: 'Порт MCP',         c: '#4fd1ff', a: -45 },
+  tools:  { n: 'Промзона',         c: '#ff8a3d', a: 0 },
+  world:  { n: 'Внешний мир',      c: '#5be39a', a: 45 },
+  memory: { n: 'Архив памяти',     c: '#ff6fae', a: 90 },
+  skills: { n: 'Академия навыков', c: '#c3f25c', a: 135 },
+  gate:   { n: 'Въезд',            c: '#e8ecff', a: 180 },
+  agents: { n: 'Аэропорт агентов', c: '#b48cff', a: -135 },
+};
+const plateMat = M(0x141a2c, { roughness: .95 });
+function district(id) {
+  const d = DIST[id], a = d.a * PI / 180, col = new THREE.Color(d.c);
+  const g = new THREE.Group(); g.position.set(Math.cos(a) * R, 0, Math.sin(a) * R); g.rotation.y = -a; scene.add(g);
+  const plate = mesh(new THREE.BoxGeometry(72, .6, 72), plateMat, g, 0, .3, 0, false); plate.receiveShadow = true;
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(plate.geometry), new THREE.LineBasicMaterial({ color: col }));
+  edges.position.y = .3; g.add(edges);
+  pick(plate, 'dz-' + id);
+  d.g = g; d.col = col; d.rad = a;
+  label(d.n, d.c, V(Math.cos(a) * (R + 30), 30, Math.sin(a) * (R + 30)), 6.5);
+  if (id !== 'gate' && id !== 'tools') {
+    roadSeg(Math.cos(a) * 56, Math.sin(a) * 56, Math.cos(a) * 100, Math.sin(a) * 100, 8, 2, 'spoke');
+    lampLine(Math.cos(a) * 60, Math.sin(a) * 60, Math.cos(a) * 99, Math.sin(a) * 99, 13, 5.2);
+    mesh(new THREE.BoxGeometry(14, .2, 18), plazaMat, g, -28, .7, 0, false).receiveShadow = true;
+  }
+  return g;
+}
+for (const id in DIST) district(id);
+const C = id => DIST[id].c;
+
+// --- Квартал законов ---
+{ const g = DIST.laws.g, c = C('laws'), f = 0x2b2414;
+  tower(g, { x: -16, z: -24, w: 10, d: 10, h: 40, c, facade: f, k: 'core-brain' });
+  tower(g, { x: -16, z: -8, w: 9, d: 9, h: 32, c, facade: f, k: 'yesman' });
+  tower(g, { x: -16, z: 8, w: 9, d: 10, h: 36, c, facade: f, k: 'security' });
+  const b = tower(g, { x: 6, z: 0, w: 14, d: 14, h: 64, c, facade: f, k: 'brainmd' });
+  mesh(new THREE.BoxGeometry(9, 10, 9), b.children[0].material, b, 0, 69, 0);
+  mesh(new THREE.ConeGeometry(1, 18, 6), goldHot, b, 0, 83, 0, false);
+  const bl = mesh(new THREE.SphereGeometry(.9, 10, 8), glow(0xff3030, 3, 2), b, 0, 92.5, 0, false); bl.userData.blink = 1.2;
+  tower(g, { x: 16, z: -24, w: 10, d: 9, h: 22, c, facade: f, k: 'onboarding' });
+  const lib = tower(g, { x: 18, z: 22, w: 16, d: 14, h: 16, c, facade: f, k: 'guides' });
+  mesh(new THREE.SphereGeometry(6, 24, 12, 0, 2 * PI, 0, PI / 2), goldM, lib, 0, 16, 0);
+  for (let i = 0; i < 6; i++) tree(-30 + i * 2.2, 30, .6, 0);
+}
+
+// --- Аэропорт агентов ---
+const planes = [];
+const agentLamps = {}, lampMats = {};   // огоньки ангаров: живое обновление перекрашивает (зелёный быстрый — работает сейчас)
+{ const g = DIST.agents.g, c = C('agents'), col = DIST.agents.col;
+  mesh(new THREE.BoxGeometry(12, .15, 66), M(0x1a1d28), g, 20, .7, 0, false).receiveShadow = true;
+  const dash = glow(c, 1.8, .6);
+  for (let z = -30; z <= 30; z += 6) mesh(new THREE.BoxGeometry(.6, .1, 3), dash, g, 20, .8, z, false);
+  for (const x of [14.3, 25.7]) for (let z = -32; z <= 32; z += 4) mesh(new THREE.SphereGeometry(.3, 6, 4), dash, g, x, .9, z, false);
+  const hm = M(0x2c2640, { metalness: .5, roughness: .4 });
+  lampMats.live = glow(0x22ff66, 4.5, 3);
+  const BI = { general: 'general-purpose', explore: 'Explore', plan: 'Plan', fork: 'fork', workflow: 'workflow' };
+  ['general', 'explore', 'plan', 'fork', 'workflow'].forEach((k, i) => {
+    const hg = new THREE.Group(); hg.position.set(-8, .6, -26 + i * 13); g.add(hg);
+    const half = mesh(new THREE.CylinderGeometry(5, 5, 16, 20, 1, false, 0, PI), hm, hg, 0, 0, 0); half.rotation.z = PI / 2;
+    mesh(new THREE.BoxGeometry(.3, 4.2, 7.5), glow(c, 1.6, .5), hg, 8, 1.6, 0, false);
+    // маяк «работает сейчас» над встроенным ангаром: группа видна, пока агент работает, шар мигает
+    const bg = new THREE.Group(); bg.position.set(0, 6.4, 0); hg.add(bg);
+    const bcn = mesh(new THREE.SphereGeometry(.9, 12, 8), lampMats.live, bg, 0, 0, 0, false); bcn.userData.blink = .45;
+    mesh(new THREE.CylinderGeometry(.12, .12, 1.4, 6), M(0x3a3f50), bg, 0, -1.1, 0, false);
+    const a = (DATA.builtin_agents || []).find(x => x.id === BI[k]); bg.visible = !!(a && a.live);
+    agentLamps['bi:' + BI[k]] = bg;
+    pick(hg, k);
+  });
+  // второй терминал: агенты VoltAgent из DAVE\agents (по одному ангару на агента, два ряда)
+  const term = new THREE.Group(); g.add(term);
+  mesh(new THREE.BoxGeometry(9, .2, 70), plazaMat, term, 31.5, .75, 0, false).receiveShadow = true;
+  const vm = M(0x3a2c55, { metalness: .5, roughness: .4 }), vGlow = glow(0xd9b8ff, 1.8, .6);
+  const busyM = glow(0x7dff9a, 2.5, 1.2), idleM = glow(0xffc95a, 1.6, .8);
+  Object.assign(lampMats, { busy: busyM, idle: idleM });
+  const nAg = DATA.agents.length, rows = Math.ceil(nAg / 2), stepZ = Math.min(8.7, 66 / Math.max(1, rows));
+  const hs = Math.min(1, stepZ / 6.2);
+  DATA.agents.forEach((a, i) => {
+    const col = i % 2, row = (i / 2) | 0;
+    const hg = new THREE.Group(); hg.position.set(29.3 + col * 4.4, .8, -33 + stepZ / 2 + row * stepZ); g.add(hg);
+    const half = mesh(new THREE.CylinderGeometry(1.9 * hs, 1.9 * hs, 3.6 * hs + .4, 12, 1, false, 0, PI), vm, hg, 0, 0, 0); half.rotation.z = PI / 2;
+    mesh(new THREE.BoxGeometry(.2, 1.5 * hs, 2.8 * hs), vGlow, hg, col ? 1.95 : -1.95, .6, 0, false);
+    const bl = mesh(new THREE.SphereGeometry(.28, 8, 6), a.live ? lampMats.live : a.runs ? busyM : idleM, hg, 0, 2.3 * hs, 0, false);
+    bl.userData.blink0 = 1.4 + i * .13; bl.userData.blink = a.live ? .45 : bl.userData.blink0; if (a.live) bl.scale.setScalar(1.7);
+    agentLamps[a.id] = bl;
+    pick(hg, 'ag-' + a.id);
+  });
+  const tw = tower(g, { x: -26, z: 28, w: 5, d: 5, h: 22, c, facade: 0x221d33 });
+  mesh(new THREE.CylinderGeometry(4, 3, 3, 8), glow(c, 1.4, .5), tw, 0, 23.5, 0);
+  // самолёты
+  const pm = glow(0xe8e0ff, 1.4, .6);
+  for (let i = 0; i < 3; i++) {
+    const p = new THREE.Group();
+    mesh(new THREE.CylinderGeometry(.6, .9, 9, 8), pm, p, 0, 0, 0, false).rotation.x = PI / 2;
+    mesh(new THREE.BoxGeometry(11, .25, 2.2), pm, p, 0, 0, .5, false);
+    mesh(new THREE.BoxGeometry(4, .2, 1.2), pm, p, 0, 0, -3.8, false);
+    mesh(new THREE.BoxGeometry(.2, 2, 1.4), pm, p, 0, 1, -3.8, false);
+    const nav = mesh(new THREE.SphereGeometry(.35, 6, 4), glow(0xff4040, 3, 2), p, 5.5, 0, .5, false); nav.userData.blink = .8;
+    scene.add(p); pick(p, 'plane');
+    planes.push({ p, r: 48 + i * 14, h: 26 + i * 9, s: .12 + i * .03, ph: i * 2.1 });
+  }
+}
+
+// --- Порт MCP ---
+const ships = [];
+{ const g = DIST.mcp.g, c = C('mcp');
+  const harbor = mesh(new THREE.BoxGeometry(34, .3, 70), waterMat, g, 18, .62, 0, false); harbor.receiveShadow = true;
+  pick(harbor, 'dz-mcp');
+  const pier = M(0x3b3f4e);
+  // корабли — MCP-модули из data.js; ящиков на палубе тем больше, чем больше инструментов
+  const nS = Math.max(1, DATA.mcp.length), stepS = Math.min(11.5, 66 / nS);
+  for (let i = 0; i < nS - 1; i++) mesh(new THREE.BoxGeometry(22, .8, 1.6), pier, g, 10, .9, -33 + stepS * (i + 1));
+  const CR = [0xff6b6b, 0xffd76a, 0x5be39a, 0xb48cff, 0x4fd1ff, 0xff8a3d, 0xff9ad5, 0x9fe8ff];
+  DATA.mcp.forEach((m, i) => {
+    const s = new THREE.Group(); s.position.set(18, .8, -33 + stepS / 2 + i * stepS); g.add(s);
+    const sw = Math.min(5.4, stepS - 2.2);
+    mesh(new THREE.BoxGeometry(17, 2.6, sw), M(0x24304a, { metalness: .4 }), s, 0, 1.3, 0);
+    mesh(new THREE.BoxGeometry(17.2, .5, sw + .2), glow(m.conf === 'Подтверждено' ? c : '#8a96c4', 1.7, .6), s, 0, 2.2, 0, false);
+    tower(s, { x: -4, y: 2.6, z: 0, w: 5, d: sw * .75, h: 4, c, facade: 0x1a2236 });
+    const crate = M(CR[i % CR.length], { emissive: CR[i % CR.length], emissiveIntensity: .25 });
+    const nc = Math.max(1, Math.min(4, Math.ceil(m.tools.length / 8)));
+    for (let j = 0; j < nc; j++) mesh(new THREE.BoxGeometry(2.2, 1.6, sw * .42), crate, s, 1 + j * 2.5, 3.4, 0);
+    pick(s, m.key); ships.push({ s, ph: rand() * 6 });
+  });
+  for (let i = 0; i < 3; i++) {
+    const cr = new THREE.Group(); cr.position.set(1, .6, -21 + i * 21); g.add(cr);
+    const cm = glow(c, .9, .3, { color: 0x1c3a4a });
+    for (const z of [-2.5, 2.5]) mesh(new THREE.BoxGeometry(.7, 22, .7), cm, cr, 0, 11, z);
+    mesh(new THREE.BoxGeometry(24, 1, 6), cm, cr, 7, 22, 0);
+  }
+  tower(g, { x: -22, z: -18, w: 18, d: 14, h: 12, c, facade: 0x18233a });
+  tower(g, { x: -22, z: 16, w: 18, d: 18, h: 9, c, facade: 0x18233a });
+}
+
+// --- Промзона ---
+const chimneys = [];
+{ const g = DIST.tools.g, c = C('tools');
+  [['shell', -16, -17], ['files', 16, -17], ['search', -16, 17], ['python', 16, 17]].forEach(([k, x, z]) => {
+    const f = tower(g, { x, z, w: 24, d: 17, h: 11, c, facade: 0x2e2018, k });
+    const rm = M(0x3b2a20, { roughness: .6 });
+    for (let i = 0; i < 4; i++) { const p = mesh(new THREE.CylinderGeometry(2.4, 2.4, 17, 3), rm, f, -9 + i * 6, 12.2, 0); p.rotation.x = PI / 2; p.rotation.y = PI; }
+    for (const dx of [6, 10]) { const ch = mesh(new THREE.CylinderGeometry(.9, 1.2, 14, 10), M(0x5a3a2a), f, dx, 18, z > 0 ? 5 : -5); ch.add(mesh(new THREE.TorusGeometry(1, .2, 4, 12), glow(c, 2, .6), null, 0, 5, 0, false)); ch.children[0].rotation.x = PI / 2; chimneys.push(ch); }
+    pick(f, k);
+  });
+}
+
+// --- Внешний мир ---
+{ const g = DIST.world.g, c = C('world');
+  const gl = new THREE.Group(); gl.position.set(-4, .6, -14); g.add(gl);
+  mesh(new THREE.CylinderGeometry(5, 7, 4, 16), stoneMat, gl, 0, 2, 0);
+  mesh(new THREE.SphereGeometry(12, 32, 20), glow(0x1db86a, .7, .25, { transparent: true, opacity: .55 }), gl, 0, 17, 0, false);
+  const wire = mesh(new THREE.SphereGeometry(12.3, 18, 12), new THREE.MeshBasicMaterial({ color: 0x5be39a, wireframe: true, transparent: true, opacity: .55 }), gl, 0, 17, 0, false);
+  const orb = mesh(new THREE.TorusGeometry(15, .2, 4, 80), glow(c, 2, .7), gl, 0, 17, 0, false); orb.rotation.x = 1.2;
+  gl.userData.spin = wire; pick(gl, 'internet'); REF.globeSpin = gl;
+  tower(g, { x: 14, z: 16, w: 18, d: 14, h: 26, c, facade: 0x142a20, k: 'apps' });
+  tower(g, { x: -14, z: 22, w: 12, d: 10, h: 14, c, facade: 0x142a20, k: 'apps' });
+  for (let i = 0; i < 3; i++) { const an = mesh(new THREE.CylinderGeometry(.25, .5, 18, 6), stoneMat, g, 24, 9.6, -26 + i * 8); const bl = mesh(new THREE.SphereGeometry(.6, 8, 6), glow(0xff4040, 3, 2), an, 0, 9.4, 0, false); bl.userData.blink = 1 + i * .3; }
+}
+
+// --- Архив памяти ---
+const factTrees = [];
+{ const g = DIST.memory.g, c = C('memory');
+  // сад памяти
+  const garden = new THREE.Group(); garden.position.set(-12, .6, -15); g.add(garden);
+  mesh(new THREE.CylinderGeometry(15, 15, .3, 40), grassMat, garden, 0, .15, 0, false).receiveShadow = true;
+  const trunk = M(0x4a3020), crownM = glow(0xff6fae, 1.4, .5, { color: 0x3a1028 });
+  { // одно дерево — один факт памяти; больше 12 — второе внутреннее кольцо
+    const nF = Math.max(1, DATA.memory.length || 10), outer = Math.min(nF, Math.ceil(nF * .6));
+    for (let i = 0; i < nF; i++) {
+      const inner = i >= outer, cnt = inner ? nF - outer : outer, j = inner ? i - outer : i;
+      const rad = inner ? 6.2 : 11.5, sc = nF > 12 ? .72 : 1;
+      const a = j / cnt * 2 * PI + (inner ? .3 : 0), x = Math.cos(a) * rad, z = Math.sin(a) * rad;
+      mesh(new THREE.CylinderGeometry(.35 * sc, .5 * sc, 4 * sc, 6), trunk, garden, x, 2 * sc, z);
+      const cr = mesh(new THREE.IcosahedronGeometry(2.6 * sc, 0), crownM, garden, x, 5.6 * sc, z); factTrees.push(cr);
+    }
+  }
+  mesh(new THREE.OctahedronGeometry(1.6, 0), glow(0xffd1e6, 2.2, .8), garden, 0, 3.4, 0, false);
+  pick(garden, 'facts');
+  // площадь проектов
+  const sq = new THREE.Group(); sq.position.set(14, .6, -14); g.add(sq);
+  mesh(new THREE.CylinderGeometry(13, 13, .3, 40), plazaMat, sq, 0, .15, 0, false).receiveShadow = true;
+  const ob = glow(c, 1.3, .5, { color: 0x2a1424 });
+  const nP = Math.max(1, DATA.projects.length || 7);
+  for (let i = 0; i < nP; i++) { const a = i / nP * 2 * PI, h = 7 + (i % 3) * 2.5; mesh(new THREE.BoxGeometry(1.5, h, 1.5), ob, sq, Math.cos(a) * 8.5, h / 2, Math.sin(a) * 8.5); mesh(new THREE.ConeGeometry(1.1, 2, 4), goldHot, sq, Math.cos(a) * 8.5, h + 1, Math.sin(a) * 8.5, false); }
+  pick(sq, 'projects');
+  // хранилища
+  function temple(x, z, k, h) {
+    const t = new THREE.Group(); t.position.set(x, .6, z); g.add(t);
+    mesh(new THREE.BoxGeometry(26, 1.6, 18), stoneMat, t, 0, .8, 0);
+    mesh(new THREE.BoxGeometry(20, h, 12), glow(c, .9, .3, { color: 0x2a1424 }), t, 0, 1.6 + h / 2, -1);
+    const colM = M(0xd8d0e0, { roughness: .5 });
+    for (let i = 0; i < 8; i++) mesh(new THREE.CylinderGeometry(.7, .7, h, 10), colM, t, -10.5 + i * 3, 1.6 + h / 2, 6.4);
+    mesh(new THREE.BoxGeometry(25, 1.2, 17), colM, t, 0, 2.2 + h, 0);
+    const ped = mesh(new THREE.CylinderGeometry(4.5, 4.5, 25, 3, 1), colM, t, 0, 2.8 + h + 1.3, 0); ped.rotation.z = PI / 2; ped.scale.set(1, 1, .45);
+    pick(t, k);
+  }
+  temple(-13, 17, 'summaries', 9); temple(15, 17, 'transcripts', 7);
+}
+
+// --- Академия навыков ---
+const fountains = [];
+{ const g = DIST.skills.g, c = C('skills');
+  mesh(new THREE.CylinderGeometry(13, 13, .3, 40), plazaMat, g, 2, .75, 0, false).receiveShadow = true;
+  mesh(new THREE.CylinderGeometry(5, 5.5, 1.2, 32), stoneMat, g, 2, 1.2, 0);
+  const fw = mesh(new THREE.CylinderGeometry(4.6, 4.6, .3, 32), waterMat, g, 2, 1.8, 0, false);
+  fountains.push({ obj: fw, h: 9, n: 220 });
+  // корпуса: высота растёт с числом навыков в группе
+  const gcount = k => DATA.skills.filter(s => s.group === k).length;
+  const CORPS = ['gamedev', 'roblox-s', 'router', 'youtube', 'news', 'workshop', 'builtin'];
+  CORPS.forEach((k, i) => {
+    const a = i / CORPS.length * 2 * PI + PI / 6, x = 2 + Math.cos(a) * 24, z = Math.sin(a) * 24;
+    const h = k === 'builtin' ? 22 : 12 + Math.min(16, gcount(k) * 1.2);
+    tower(g, { x, z, w: 10, d: 10, h, c: k === 'workshop' ? '#7dffcf' : c, facade: 0x1e2a14, k, ry: -a });
+  });
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 2 * PI; tree(0, 0, 0); trees.pop(); }
+}
+
+// --- Въезд ---
+const blinkers = [], waves = [];
+let clockH, clockM;
+{ const g = DIST.gate.g, c = C('gate');
+  const hall = tower(g, { x: 0, z: -21, w: 30, d: 15, h: 14, c: '#ffe6b0', facade: 0x2a2c3a, k: 'daveapp' });
+  mesh(new THREE.SphereGeometry(6.5, 28, 14, 0, 2 * PI, 0, PI / 2), goldM, hall, 0, 14, 0);
+  mesh(new THREE.ConeGeometry(.8, 6, 8), goldHot, hall, 0, 23, 0, false);
+  const colM = M(0xd8dcea);
+  for (let i = 0; i < 8; i++) mesh(new THREE.CylinderGeometry(.6, .6, 11, 10), colM, hall, -12.6 + i * 3.6, 5.5, 8.5);
+  mesh(new THREE.BoxGeometry(31, 1, 3), colM, hall, 0, 11.5, 8.5);
+  // часовая башня
+  const ct = tower(g, { x: -27, z: -24, w: 6, d: 6, h: 26, c: '#ffe6b0', facade: 0x2a2c3a, k: 'scheduler' });
+  const face = mesh(new THREE.CircleGeometry(2.4, 32), glow(0xfff2c8, 1.6, .9), ct, 0, 22, 3.05, false);
+  clockH = mesh(new THREE.BoxGeometry(.35, 1.5, .1), M(0x111111), face, 0, .6, .05, false); clockH.geometry.translate(0, .1, 0);
+  clockM = mesh(new THREE.BoxGeometry(.25, 2.1, .1), M(0x111111), face, 0, .9, .08, false);
+  clockH.position.set(0, 0, .05); clockM.position.set(0, 0, .08); clockH.geometry.translate(0, .6, 0); clockM.geometry.translate(0, 1, 0);
+  mesh(new THREE.ConeGeometry(4.6, 6, 4), M(0x5a3a2a), ct, 0, 29, 0).rotation.y = PI / 4;
+  // твой дом
+  const home = roofHouse(g, { x: -16, z: 20, w: 9, d: 8, h: 7, c: '#ffcf8a', facade: 0x3a2c22, k: 'sergey', roof: 0x7a3a2a });
+  mesh(new THREE.BoxGeometry(14, .2, 3), plazaMat, g, -16, .7, 12, false);
+  // Telegram
+  const tg = new THREE.Group(); tg.position.set(6, .6, 22); g.add(tg);
+  mesh(new THREE.CylinderGeometry(.5, 3.2, 42, 4, 10, true), new THREE.MeshBasicMaterial({ color: 0x9fd0ff, wireframe: true }), tg, 0, 21, 0, false);
+  mesh(new THREE.CylinderGeometry(.3, .3, 42, 4), stoneMat, tg, 0, 21, 0);
+  const tl = mesh(new THREE.SphereGeometry(.9, 10, 8), glow(0xff3030, 3, 2), tg, 0, 43, 0, false); tl.userData.blink = 1;
+  for (let i = 0; i < 3; i++) { const w = mesh(new THREE.TorusGeometry(2, .12, 4, 40), glow(0x9fd0ff, 2, .8, { transparent: true }), tg, 0, 43, 0, false); w.rotation.x = PI / 2; waves.push({ m: w, ph: i / 3 }); }
+  pick(tg, 'telegram');
+  // голос
+  const vo = new THREE.Group(); vo.position.set(24, .6, 20); g.add(vo);
+  mesh(new THREE.CylinderGeometry(.4, .6, 8, 8), stoneMat, vo, 0, 4, 0);
+  const dish = mesh(new THREE.SphereGeometry(4, 20, 10, 0, 2 * PI, 0, .9), M(0xc8d0e8, { side: THREE.DoubleSide, metalness: .5 }), vo, 0, 10, 0); dish.rotation.x = PI * .8;
+  mesh(new THREE.SphereGeometry(.5, 8, 6), glow(0x9fd0ff, 2.5, 1), vo, 0, 9, 1.5, false);
+  pick(vo, 'voice');
+  for (let i = 0; i < 6; i++) tree(26 - i * 4, -32, .7, 1);
+}
+
+/* ================= ПРОМЕЖУТКИ: ЧАТЫ, ПАРКИ, ПРУДЫ ================= */
+function gapGroup(angleDeg, r = 152) { const a = angleDeg * PI / 180, g = new THREE.Group(); g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); g.rotation.y = -a; scene.add(g); return { g, a, x: g.position.x, z: g.position.z }; }
+function residential(angle, lit, k, name) {
+  const { g, x, z } = gapGroup(angle, 150);
+  mesh(new THREE.BoxGeometry(44, .3, 44), M(0x1a2620), g, 0, .15, 0, false).receiveShadow = true;
+  for (const s of [-7.5, 7.5]) { mesh(new THREE.BoxGeometry(44, .1, 3.2), plazaMat, g, 0, .35, s, false); mesh(new THREE.BoxGeometry(3.2, .1, 44), plazaMat, g, s, .35, 0, false); }
+  const grp = new THREE.Group(); g.add(grp);
+  let n = 0;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) for (let q = 0; q < 2; q++) {
+    const cx = -15 + i * 15 + (q ? 3.2 : -3.2), cz = -15 + j * 15 + (q ? -2.5 : 2.5);
+    const on = lit ? n < Math.min(18, DATA.counts.summaries || 9) : rand() < .5;   // светится столько домов, сколько чатов со сводкой
+    roofHouse(grp, { x: cx, z: cz, y: .3, w: 4.6, d: 4.6, h: rr(3.5, 6), c: on ? '#ffcf8a' : '#6a7aa8', ei: on ? (lit ? 1.4 : .5) : .25, facade: 0x2c2a30, roof: [0x7a3a2a, 0x3a4a6a, 0x5a4a3a][(rand() * 3) | 0] });
+    if (q === 0) tree(0, 0, 0), trees.pop();
+    n++;
+  }
+  pick(grp, k);
+  label(name, lit ? '#ffcf8a' : '#8a96c4', V(x, 26, z), 5);
+}
+residential(-157.5, true, 'chats', 'Жилой массив · чаты');
+residential(157.5, false, 'chats-old', 'Старый квартал · давние чаты');
+
+function park(angle, withPond) {
+  const { g, x, z } = gapGroup(angle);
+  mesh(new THREE.CylinderGeometry(23, 23, .4, 48), grassMat, g, 0, .2, 0, false).receiveShadow = true;
+  mesh(new THREE.BoxGeometry(46, .1, 2.4), M(0x8a7a5a), g, 0, .45, 0, false);
+  mesh(new THREE.BoxGeometry(2.4, .1, 46), M(0x8a7a5a), g, 0, .45, 0, false);
+  const pk = new THREE.Group(); g.add(pk);
+  mesh(new THREE.CylinderGeometry(23, 23, .45, 48), new THREE.MeshBasicMaterial({ visible: false }), pk, 0, .2, 0, false);
+  pick(pk, 'park');
+  const wp = new THREE.Vector3();
+  for (let i = 0; i < 34; i++) {
+    const a = rand() * 2 * PI, d = 4 + Math.sqrt(rand()) * 17, lx = Math.cos(a) * d, lz = Math.sin(a) * d;
+    if (Math.abs(lx) < 2.5 || Math.abs(lz) < 2.5) continue;
+    if (withPond && Math.hypot(lx - 9, lz - 9) < 8) continue;
+    wp.set(lx, 0, lz).applyEuler(g.rotation).add(g.position); tree(wp.x, wp.z, rr(.7, 1.25));
+  }
+  if (withPond) { mesh(new THREE.CylinderGeometry(6.5, 6.5, .3, 32), waterMat, g, 9, .45, 9, false); }
+  for (const [lx, lz] of [[2.5, 8], [-2.5, -8], [8, -2.5], [-8, 2.5]]) { wp.set(lx, 0, lz).applyEuler(g.rotation).add(g.position); lamps.push({ x: wp.x, z: wp.z }); }
+}
+park(-112.5); park(-22.5, true); park(22.5); park(112.5, true);
+
+const ripples = [];
+function pond(angle, k, name) {
+  const { g, x, z } = gapGroup(angle);
+  mesh(new THREE.CylinderGeometry(23, 23, .4, 48), grassMat, g, 0, .2, 0, false).receiveShadow = true;
+  const rim = mesh(new THREE.TorusGeometry(16.5, .9, 8, 64), stoneMat, g, 0, .5, 0); rim.rotation.x = PI / 2;
+  const w = mesh(new THREE.CylinderGeometry(16.2, 16.2, .35, 64), waterMat, g, 0, .45, 0, false);
+  pick(w, k);
+  for (let i = 0; i < 6; i++) { const a = rand() * 2 * PI, d = rr(5, 13); mesh(new THREE.CylinderGeometry(1, 1, .08, 12), M(0x2f7a3a), g, Math.cos(a) * d, .7, Math.sin(a) * d, false); }
+  const wp = new THREE.Vector3();
+  for (let i = 0; i < 16; i++) { const a = i / 16 * 2 * PI + rand() * .2; wp.set(Math.cos(a) * 20.5, 0, Math.sin(a) * 20.5).applyEuler(g.rotation).add(g.position); tree(wp.x, wp.z, rr(.6, 1)); }
+  if (k === 'cache') {
+    mesh(new THREE.CylinderGeometry(1.4, 1.8, 1.5, 16), stoneMat, g, 0, 1, 0);
+    fountains.push({ obj: w, h: 11, n: 260 });
+    for (let i = 0; i < 3; i++) { const rp = mesh(new THREE.TorusGeometry(1, .08, 4, 48), glow(0x9fd8ff, 1.6, .5, { transparent: true }), g, 0, .7, 0, false); rp.rotation.x = PI / 2; ripples.push({ m: rp, ph: i / 3 }); }
+  }
+  if (name) label(name, '#9fd8ff', V(x, 18, z), 4.5);
+}
+pond(-67.5, 'cache', 'Пруд кэша');
+pond(67.5, 'pond');
+
+// внутренний зелёный пояс (декор)
+const spokeAngles = Object.values(DIST).map(d => d.a * PI / 180);
+for (let i = 0; i < 260; i++) {
+  const a = rand() * 2 * PI, r = rr(60, 82);
+  if (spokeAngles.some(s => Math.abs(Math.atan2(Math.sin(a - s), Math.cos(a - s))) < .11)) continue;
+  tree(Math.cos(a) * r, Math.sin(a) * r, rr(.6, 1.1));
+}
+
+/* ================= МАГИСТРАЛЬ, ВОСТОЧНАЯ ДОРОГА, РЕКА ================= */
+roadSeg(-420, 0, -56, 0, 17, 4, 'highway');
+lampLine(-410, 0, -60, 0, 16, 10);
+roadSeg(56, 0, 203, 0, 11, 2, 'road-free');
+roadSeg(237, 0, 279, 0, 11, 2, 'road-free');
+lampLine(60, 0, 200, 0, 15, 6.6); lampLine(240, 0, 278, 0, 15, 6.6);
+
+const river = mesh(new THREE.PlaneGeometry(30, 1600), waterMat, scene, 220, .25, 0, false); river.rotation.x = -PI / 2; river.receiveShadow = true;
+pick(river, 'river');
+for (const x of [204, 236]) mesh(new THREE.BoxGeometry(2, 1, 1600), stoneMat, scene, x, .5, 0, false);
+{ const b = new THREE.Group(); scene.add(b);
+  mesh(new THREE.BoxGeometry(36, 1, 12), M(0x2a3150), b, 220, 1.6, 0);
+  const red = glow(0xff6b6b, 1.8, .6);
+  for (const z of [-6, 6]) { mesh(new THREE.BoxGeometry(36, .4, .4), red, b, 220, 2.8, z, false); for (let x = 204; x <= 236; x += 4) mesh(new THREE.BoxGeometry(.3, 1.2, .3), red, b, x, 2.4, z, false); }
+  for (const x of [210, 230]) mesh(new THREE.CylinderGeometry(1.2, 1.4, 2, 10), stoneMat, b, x, .6, 0);
+  pick(b, 'road-free');
+  // пешеходный мостик и грунтовка к LM Studio
+  const f = new THREE.Group(); scene.add(f);
+  const dirt = M(0x5a4630, { roughness: 1 });
+  mesh(new THREE.BoxGeometry(33, .12, 2.6), dirt, f, 187, .4, 30, false).receiveShadow = true;
+  mesh(new THREE.BoxGeometry(44, .12, 2.6), dirt, f, 257, .4, 30, false).receiveShadow = true;
+  mesh(new THREE.BoxGeometry(34, .4, 2.4), M(0x7a5a3a), f, 220, 1.3, 30);
+  for (const z of [28.9, 31.1]) mesh(new THREE.BoxGeometry(34, .15, .15), glow(0xffb0b0, 1, .3), f, 220, 2.3, z, false);
+  pick(f, 'road-lm');
+}
+
+/* ================= ГОРОД-СПУТНИК ================= */
+{ const red = '#ff6b6b', f = 0x2e1a1e;
+  const plate = mesh(new THREE.BoxGeometry(76, .6, 124), plateMat, scene, 303, .3, 0, false); plate.receiveShadow = true;
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(plate.geometry), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+  edges.position.set(303, .3, 0); scene.add(edges); pick(plate, 'dz-sat');
+  label('Город-спутник · помощники', red, V(303, 30, -78), 6.5);
+  const ft = tower(scene, { x: 285, z: -24, w: 14, d: 14, h: 46, c: red, facade: f, k: 'freellm' });
+  mesh(new THREE.CylinderGeometry(5, 7, 6, 12), glow(0xff6b6b, 1.6, .6), ft, 0, 49, 0);
+  mesh(new THREE.ConeGeometry(.7, 12, 6), glow(0xffd0d0, 2.4, 1), ft, 0, 58, 0, false);
+  mesh(new THREE.CylinderGeometry(14, 14, .2, 36), plazaMat, scene, 289, .7, 2, false);
+  tower(scene, { x: 290, z: 32, w: 22, d: 14, h: 18, c: '#ff9a9a', facade: f, k: 'lmstudio' });
+  tower(scene, { x: 322, z: 14, w: 12, d: 12, h: 50, c: '#ff8a5a', facade: f, k: 'qwen36' });
+  tower(scene, { x: 322, z: 40, w: 10, d: 10, h: 24, c: '#ff8a5a', facade: f, k: 'qwen38', ei: .6 });
+  const hm = tower(scene, { x: 318, z: -36, w: 22, d: 16, h: 11, c: '#ffb0b0', facade: f, k: 'hermes' });
+  mesh(new THREE.SphereGeometry(6, 24, 12, 0, 2 * PI, 0, PI / 2), glow(0xff6b6b, 1, .4, { color: 0x3a1a1a }), hm, 0, 11, 0);
+  // ComfyUI — локальные картинки (новый): башня с «палитрой» на крыше
+  const cu = tower(scene, { x: 322, z: -12, w: 10, d: 10, h: 32, c: '#ffa07a', facade: f, k: 'comfyui-sat' });
+  const pal = new THREE.Group(); pal.position.y = 33; cu.add(pal);
+  mesh(new THREE.CylinderGeometry(4.2, 4.2, .5, 24), M(0x3a2a22), pal, 0, 0, 0);
+  [0xff6b6b, 0xffd76a, 0x5be39a, 0x4fd1ff, 0xb48cff].forEach((col, i) => { const a = i / 5 * 2 * PI;
+    mesh(new THREE.CylinderGeometry(.75, .75, .4, 12), glow(col, 2, .8), pal, Math.cos(a) * 2.6, .45, Math.sin(a) * 2.6, false); });
+  REF.palette = pal;
+  label('ComfyUI', '#ffc0a0', V(322, 44, -12), 3.4);
+  roadSeg(305, -26, 305, 24, 7, 2);
+  mesh(new THREE.CylinderGeometry(7, 7, .3, 32), waterMat, scene, 282, .75, 52, false);
+  treesIn(270, 52, 14, 14, (x, z) => Math.hypot(x - 282, z - 52) < 8.5 || x < 268);
+  for (let i = 0; i < 10; i++) tree(338 - (i % 2) * 3, -55 + i * 12, .8, 0);
+  label('LM Studio', '#ffb0b0', V(290, 26, 32), 3.4);
+  label('Hermes', '#ffb0b0', V(318, 22, -36), 3.4);
+  label('FreeLLMAPI', '#ff8a8a', V(285, 67, -24), 3.6);
+}
+
+/* ================= ПРИГОРОД (ДЕКОР) ================= */
+function blocked(x, z) {
+  if (x > 190 && x < 350 && Math.abs(z) < 72) return true;
+  if (x > 200 && x < 240) return true;
+  if (x < 0 && Math.abs(z) < 16) return true;
+  if (x > 0 && x < 200 && Math.abs(z) < 12) return true;
+  return false;
+}
+const subHouses = [];
+for (let i = 0; i < 520; i++) {
+  const a = rand() * 2 * PI, r = rr(205, 470), x = Math.cos(a) * r, z = Math.sin(a) * r;
+  if (blocked(x, z)) continue;
+  if (rand() < .3) subHouses.push({ x, z, h: rr(3, 9), w: rr(4, 7), ry: a });
+  else { tree(x, z, rr(.7, 1.4)); if (rand() < .6) tree(x + rr(-5, 5), z + rr(-5, 5), rr(.6, 1.2)); }
+}
+for (let i = 0; i < 90; i++) { const x = rr(350, 470), z = rr(-90, 90); tree(x, z, rr(.7, 1.3)); }
+
+/* ================= ИНСТАНСЫ: ДЕРЕВЬЯ, ДОМА, ФОНАРИ ================= */
+const dummy = new THREE.Object3D(), tmpC = new THREE.Color();
+{ const pines = trees.filter(t => t.type === 0), rounds = trees.filter(t => t.type === 1);
+  const trunkI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.28, .42, 2.2, 5), M(0x4a3020), trees.length);
+  const pineI = new THREE.InstancedMesh(new THREE.ConeGeometry(2, 5.2, 7), M(0xffffff, { roughness: .9 }), pines.length);
+  const roundI = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.3, 0), M(0xffffff, { roughness: .9, flatShading: true }), rounds.length);
+  trees.forEach((t, i) => { dummy.position.set(t.x, 1.1 * t.s, t.z); dummy.scale.setScalar(t.s); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); trunkI.setMatrixAt(i, dummy.matrix); });
+  pines.forEach((t, i) => { dummy.position.set(t.x, (2.2 + 2.4) * t.s, t.z); dummy.scale.setScalar(t.s); dummy.updateMatrix(); pineI.setMatrixAt(i, dummy.matrix); pineI.setColorAt(i, tmpC.setHSL(.33 + t.c * .06, .45, .2 + t.c * .08)); });
+  rounds.forEach((t, i) => { dummy.position.set(t.x, (2.2 + 1.8) * t.s, t.z); dummy.scale.setScalar(t.s); dummy.rotation.y = t.c * 6; dummy.updateMatrix(); roundI.setMatrixAt(i, dummy.matrix); roundI.setColorAt(i, tmpC.setHSL(.24 + t.c * .1, .5, .22 + t.c * .1)); });
+  for (const im of [trunkI, pineI, roundI]) { im.castShadow = true; im.receiveShadow = true; scene.add(im); }
+}
+{ const tex = new THREE.CanvasTexture(WIN[1]); tex.encoding = THREE.sRGBEncoding;
+  const hm = new THREE.MeshStandardMaterial({ color: 0x2a2a34, emissive: 0xffcf8a, emissiveMap: tex, emissiveIntensity: .7, roughness: .7 });
+  winMats.push({ m: hm, k: .55 });
+  const bodyI = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), hm, subHouses.length);
+  const roofG = new THREE.ConeGeometry(.78, .6, 4); roofG.rotateY(PI / 4);
+  const roofI = new THREE.InstancedMesh(roofG, M(0xffffff), subHouses.length);
+  subHouses.forEach((h, i) => {
+    dummy.rotation.set(0, h.ry, 0); dummy.position.set(h.x, h.h / 2, h.z); dummy.scale.set(h.w, h.h, h.w); dummy.updateMatrix(); bodyI.setMatrixAt(i, dummy.matrix);
+    dummy.position.set(h.x, h.h + h.w * .3, h.z); dummy.scale.set(h.w, h.w, h.w); dummy.updateMatrix(); roofI.setMatrixAt(i, dummy.matrix);
+    roofI.setColorAt(i, tmpC.setHex([0x7a3a2a, 0x3a4a6a, 0x5a4a3a, 0x6a2a2a][i % 4]));
+  });
+  for (const im of [bodyI, roofI]) { im.castShadow = true; im.receiveShadow = true; scene.add(im); }
+}
+{ const poleI = new THREE.InstancedMesh(new THREE.CylinderGeometry(.12, .18, 6, 5), M(0x3a3f50), lamps.length);
+  const bulbI = new THREE.InstancedMesh(new THREE.SphereGeometry(.45, 8, 6), glow(0xffd9a0, 2.6, .2), lamps.length);
+  lamps.forEach((l, i) => { dummy.rotation.set(0, 0, 0); dummy.scale.setScalar(1); dummy.position.set(l.x, 3, l.z); dummy.updateMatrix(); poleI.setMatrixAt(i, dummy.matrix); dummy.position.set(l.x, 6.1, l.z); dummy.updateMatrix(); bulbI.setMatrixAt(i, dummy.matrix); });
+  scene.add(poleI, bulbI);
+}
+
+/* ================= ПОДПИСИ ЦЕНТРА ================= */
+label('ЯДРО · модель Claude', '#ffd76a', V(0, coreTop + 12, 0), 6);
+label('Мост API', '#ffffff', V(-34, 18, 0), 3.6);
+label('Кольцо Claude Code', '#ffd76a', V(0, 6, 62), 4);
+label('Эстакада параллелей', '#c9b2ff', V(-64, 18, -64), 4);
+label('Озеро интернета', '#7cc4ff', V(28, 5, 30), 3.6);
+label('Магистраль', '#ffe3a0', V(-250, 8, 0), 4.2);
+label('Река', '#7cc4ff', V(220, 6, -110), 4);
+{ const a = DIST.agents.rad, lp = V(31.5, 0, 0).applyAxisAngle(V(0, 1, 0), -a).add(DIST.agents.g.position); label('Второй терминал · ' + DATA.agents.length + ' агентов', '#d9b8ff', V(lp.x, 16, lp.z), 3.6); }
+
+/* ================= ТРАФИК ================= */
+class Circle extends THREE.Curve {
+  constructor(r, y) { super(); this.r = r; this.y = y; }
+  getPoint(t, o = new THREE.Vector3()) { const a = t * 2 * PI; return o.set(Math.cos(a) * this.r, this.y, Math.sin(a) * this.r); }
+}
+function poly(pts) { const p = new THREE.CurvePath(); for (let i = 0; i < pts.length - 1; i++) p.add(new THREE.LineCurve3(pts[i], pts[i + 1])); return p; }
+const cars = [], carGeo = new THREE.BoxGeometry(1.3, 1, 2.8), carMats = {};
+function lane(curve, color, n, speed, off, rev) {
+  const mat = carMats[color] || (carMats[color] = glow(color, 1.7, 1));
+  const len = curve.getLength();
+  for (let i = 0; i < n; i++) { const m = new THREE.Mesh(carGeo, mat); scene.add(m); cars.push({ m, curve, u: (i + rand() * .7) / n, v: speed / len * (rev ? -1 : 1), off }); }
+}
+lane(new Circle(50.5, .9), '#ffd76a', 16, 20, 2.6, false);
+lane(new Circle(50.5, .9), '#ffe8b0', 16, 20, -2.6, true);
+lane(new Circle(88, 10.9), '#c9b2ff', 12, 26, 2, false);
+lane(new Circle(88, 10.9), '#b48cff', 12, 26, -2, true);
+const HW = poly([V(-420, .9, 0), V(-47, .9, 0), V(-45, 2.5, 0), V(-24, 2.5, 0)]);
+lane(HW, '#ffe3a0', 12, 34, -2.2, false); lane(HW, '#ffe3a0', 10, 40, -5.6, false);
+lane(HW, '#9fd8ff', 12, 34, 2.2, true);  lane(HW, '#9fd8ff', 10, 40, 5.6, true);
+for (const id in DIST) { if (id === 'gate' || id === 'tools') continue; const a = DIST[id].rad;
+  const sp = new THREE.LineCurve3(V(Math.cos(a) * 56, .9, Math.sin(a) * 56), V(Math.cos(a) * 100, .9, Math.sin(a) * 100));
+  lane(sp, C(id), 3, 14, 1.8, false); lane(sp, C(id), 3, 14, -1.8, true); }
+const EAST = poly([V(56, .9, 0), V(200, .9, 0), V(204, 2.6, 0), V(236, 2.6, 0), V(240, .9, 0), V(279, .9, 0)]);
+lane(EAST, '#ff8a3d', 7, 22, 2.4, false); lane(EAST, '#ff8a8a', 7, 22, -2.4, true);
+const HER = new THREE.LineCurve3(V(305, .9, -26), V(305, .9, 24));
+lane(HER, '#ffd0d0', 3, 9, 1.5, false); lane(HER, '#ffd0d0', 3, 9, -1.5, true);
+
+/* ================= ЧАСТИЦЫ ================= */
+const softTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+scene.updateMatrixWorld(true);
+const smoke = [];
+for (const ch of chimneys) { const p = ch.getWorldPosition(V()); p.y += 7.5;
+  for (let i = 0; i < 6; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: 0x9a8a80, transparent: true, depthWrite: false, opacity: .4 })); scene.add(s); smoke.push({ s, base: p, t: i / 6 }); } }
+const fx = [];
+for (const f of fountains) { const p = f.obj.getWorldPosition(V());
+  const pos = new Float32Array(f.n * 3), vel = [];
+  for (let i = 0; i < f.n; i++) { vel.push({ v: V(), age: rand() * 1.6 }); pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xbfe8ff, size: .7, map: softTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(pts); fx.push({ p, geo, vel, h: f.h }); }
+
+/* ================= ДЕНЬ / НОЧЬ ================= */
+let night = true;
+function applyMode() {
+  scene.background = new THREE.Color(night ? 0x050812 : 0x9fc9f2);
+  scene.fog = new THREE.FogExp2(night ? 0x070b18 : 0xb9d6f2, night ? .0014 : .0007);
+  hemi.intensity = night ? .38 : .5; hemi.color.setHex(night ? 0x7f9fff : 0xdfeeff); hemi.groundColor.setHex(night ? 0x141824 : 0x4a5a40);
+  sun.intensity = night ? .3 : .95; sun.color.setHex(night ? 0x8899ff : 0xfff1d8);
+  groundMat.color.setHex(night ? 0x0c1611 : 0x2c4426);
+  plateMat.color.setHex(night ? 0x141a2c : 0x3a4052);
+  for (const w of winMats) w.m.emissiveIntensity = (night ? 1.0 : .1) * w.k;
+  for (const gm of glowMats) gm.m.emissiveIntensity = night ? gm.night : gm.day;
+  bloom.strength = night ? .85 : .2;
+  beamMat.opacity = night ? .1 : .04;
+  coreLight.intensity = night ? 2.2 : .6;
+  document.getElementById('b-day').textContent = night ? '☀ День' : '☾ Ночь';
+}
+applyMode();
+
+/* ================= ПАНЕЛЬ, НАВЕДЕНИЕ ================= */
+const $ = id => document.getElementById(id);
+const intro = { t: $('i-title').textContent, d: $('i-dist').textContent, c: $('i-conf').textContent, x: $('i-text').textContent };
+function show(k) {
+  const v = INFO[k]; if (!v) return;
+  $('i-title').textContent = v[0]; $('i-dist').textContent = v[1]; $('i-conf').textContent = v[2]; $('i-text').textContent = v[3];
+  const cond = v[2].startsWith('Условно'), deco = v[2] === 'Декор';
+  $('i-conf').style.background = cond ? '#3a2c0c' : deco ? '#22273a' : '#0f3326';
+  $('i-conf').style.color = cond ? '#f5b942' : deco ? '#aab3d6' : '#5be39a';
+}
+function showIntro() { $('i-title').textContent = intro.t; $('i-dist').textContent = intro.d; $('i-conf').textContent = intro.c; $('i-text').textContent = intro.x; $('i-conf').style.background = '#0f3326'; $('i-conf').style.color = '#5be39a'; }
+
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2(); let mouseDirty = false, mx = 0, my = 0, hoverK = null, pinned = null;
+const hl = new THREE.BoxHelper(undefined, 0xffffff); hl.visible = false; hl.material.depthTest = false; hl.renderOrder = 30; scene.add(hl);
+function hitAt() {
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(window.INTERIOR && INTERIOR.active ? INTERIOR.pick : pickables, false);
+  if (!hits.length) return null;
+  const firstNonDome = hits.find(h => h.object.userData.k !== 'ctx' || h.object === island);
+  return (firstNonDome || hits[0]).object;
+}
+renderer.domElement.addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); mouseDirty = true; });
+renderer.domElement.addEventListener('pointerleave', () => { hoverK = null; hl.visible = false; $('tip').style.display = 'none'; if (pinned) show(pinned); else showIntro(); });
+let downXY = null;
+renderer.domElement.addEventListener('pointerdown', e => { downXY = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downXY || Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]) > 5) return;
+  const o = hitAt(), k = o ? o.userData.k : null;
+  if (window.INTERIOR && INTERIOR.onClick(k, pinned)) return;   // второй клик по зданию — войти; клик по монитору — приблизить
+  pinned = k; if (pinned) show(pinned); else showIntro();
+});
+renderer.domElement.addEventListener('dblclick', () => { const o = hitAt(); if (o && window.INTERIOR) INTERIOR.onDouble(o.userData.k); });
+function updateHover() {
+  if (!mouseDirty) return; mouseDirty = false;
+  const o = hitAt(), tip = $('tip');
+  if (o) {
+    const k = o.userData.k;
+    if (k !== hoverK) { hoverK = k; hl.setFromObject(o.userData.root); hl.visible = true; show(k); }
+    tip.textContent = INFO[k] ? INFO[k][0] : k; tip.style.display = 'block'; tip.style.left = (mx + 14) + 'px'; tip.style.top = (my + 12) + 'px';
+    renderer.domElement.style.cursor = 'pointer';
+  } else {
+    if (hoverK) { hoverK = null; hl.visible = false; if (pinned) show(pinned); else showIntro(); }
+    tip.style.display = 'none'; renderer.domElement.style.cursor = 'default';
+  }
+}
+
+/* ================= КАМЕРА ================= */
+let fly = null;
+function flyTo(t, c, dur = 1.6) { fly = { t0: performance.now(), dur: dur * 1000, ft: controls.target.clone(), tt: t, fc: camera.position.clone(), tc: c }; }
+const NAV = [['Весь город', '#dfe6ff', () => flyTo(HOME.t.clone(), HOME.c.clone())],
+             ['Ядро', '#ffd76a', () => { flyTo(V(0, 24, 0), V(-100, 62, 112)); show('core'); }]];
+for (const id in DIST) { const d = DIST[id]; NAV.push([d.n, d.c, () => {
+  const a = d.rad, cx = Math.cos(a) * R, cz = Math.sin(a) * R, tx = -Math.sin(a), tz = Math.cos(a);
+  flyTo(V(cx, 10, cz), V(cx + Math.cos(a) * 78 + tx * 48, 72, cz + Math.sin(a) * 78 + tz * 48)); show('dz-' + id); }]); }
+NAV.push(['Город-спутник', '#ff6b6b', () => { flyTo(V(300, 10, 0), V(420, 95, 100)); show('dz-sat'); }]);
+NAV.push(['Чаты', '#ffcf8a', () => { const a = -157.5 * PI / 180, x = Math.cos(a) * 150, z = Math.sin(a) * 150; flyTo(V(x, 4, z), V(x - 50, 55, z - 60)); show('chats'); }]);
+NAV.forEach(([n, c, fn]) => { const b = document.createElement('button'); b.innerHTML = `<span class="sw" style="background:${c}"></span>${n}`; b.onclick = fn; $('nav').appendChild(b); });
+
+$('b-home').onclick = () => flyTo(HOME.t.clone(), HOME.c.clone());
+$('b-day').onclick = () => { night = !night; applyMode(); };
+$('b-rot').onclick = () => { controls.autoRotate = !controls.autoRotate; $('b-rot').style.borderColor = controls.autoRotate ? '#ffd76a' : '#2a3878'; };
+let labelsOn = true;
+$('b-lbl').onclick = () => { labelsOn = !labelsOn; labels.forEach(s => s.visible = labelsOn); };
+
+/* ================= ПУТЬ СООБЩЕНИЯ ================= */
+const wp = (k, dy = 0) => REF[k].getWorldPosition(V()).add(V(0, dy, 0));
+const orb = new THREE.Mesh(new THREE.SphereGeometry(3.2, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+const orbLight = new THREE.PointLight(0xfff0c0, 0, 70, 1.5); orb.add(orbLight); orb.visible = false; scene.add(orb);
+const trail = [];
+const hlPool = Array.from({ length: 6 }, () => { const h = new THREE.BoxHelper(undefined, 0xffd76a); h.visible = false; h.material.depthTest = false; h.renderOrder = 31; scene.add(h); return h; });
+function setHl(keys) { hlPool.forEach((h, i) => { const k = keys[i]; if (k && REF[k]) { h.setFromObject(REF[k]); h.visible = true; } else h.visible = false; }); }
+let think = 0, tween = null;
+function moveAlong(pts, dur) { return new Promise(res => { tween = { curve: new THREE.CatmullRomCurve3(pts), t0: performance.now(), dur, res }; }); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const STEPS = [
+  { cap: 'Ты отправляешь сообщение — текстом, голосом или файлом. Оно приходит в Ратушу D.A.V.E.', pts: () => [wp('sergey', 9), V(-160, 25, 15), wp('daveapp', 18)], hl: ['sergey', 'daveapp'] },
+  { cap: 'Ратуша собирает контекст: законы и твой BRAIN.md, сад памяти, площадь проектов, каталог навыков, история чата.', pts: () => [wp('brainmd', 80), V(-90, 90, -90), wp('facts', 10).lerp(wp('daveapp', 18), .3).setY(70), wp('daveapp', 18)], hl: ['brainmd', 'core-brain', 'facts', 'projects', 'daveapp'] },
+  { cap: 'Claude Code везёт весь контекст по магистрали, через кольцо и мост API — в облако, к ядру.', pts: () => [wp('daveapp', 18), V(-110, 6, 0), V(-56, 5, 0), V(-35, 6, 0), V(-8, 30, 0), V(0, 40, 0)], hl: ['highway', 'ring', 'bridge', 'core'] },
+  { cap: 'Ядро думает: кольца внимания крутятся, слой за слоем выбирается следующий токен.', pts: null, hl: ['core', 'layers', 'ctx'] },
+  { cap: 'Нужно действие? Ядро не делает его само — пишет заказ. Claude Code исполняет его на ПК, например на заводе PowerShell.', pts: () => [V(0, 40, 0), V(30, 12, 0), V(56, 5, 0), V(95, 5, 0), wp('shell', 20)], hl: ['ring', 'spoke', 'shell'] },
+  { cap: 'Результат возвращается в купол контекста и снова едет в ядро. Шаги 4–6 крутятся, пока задача не решена; независимые заказы идут по эстакаде параллельно.', pts: () => [wp('shell', 20), V(95, 14, 0), V(88, 14, 20), V(30, 14, 10), V(0, 40, 0)], hl: ['ctx', 'par'] },
+  { cap: 'Готовый ответ течёт токенами обратно через мост — в окно D.A.V.E. к тебе и в Telegram. Уроки задачи ложатся в сад памяти.', pts: () => [V(0, 40, 0), V(-35, 6, 0), V(-60, 5, 0), V(-120, 6, 0), wp('telegram', 44), wp('sergey', 9)], hl: ['sergey', 'telegram', 'facts', 'bridge'] },
+];
+$('b-trace').onclick = async () => {
+  const btn = $('b-trace'), box = $('trace'); btn.disabled = true; box.style.display = 'block';
+  orb.visible = true; orbLight.intensity = 3;
+  for (let s = 0; s < STEPS.length; s++) {
+    const st = STEPS[s]; box.innerHTML = `<b>Шаг ${s + 1} из ${STEPS.length}</b><br>${st.cap}`; setHl(st.hl);
+    if (st.pts) { const p = st.pts(); orb.position.copy(p[0]); await moveAlong(p, 3200); }
+    else { orb.position.set(0, 40, 0); think = 1; await sleep(2800); think = 0; }
+    await sleep(900);
+  }
+  orb.visible = false; orbLight.intensity = 0; setHl([]);
+  box.innerHTML = '<b>Круг замкнут.</b><br>Так проходит каждое сообщение. В сложной задаче шаги 4–6 повторяются десятки раз — и каждый раз по мосту едет весь контекст.';
+  btn.disabled = false; btn.textContent = '↻ Ещё раз';
+};
+
+/* ================= ЦИКЛ ================= */
+const clock = new THREE.Clock(); let T = 0;
+const tmpP = V(), tmpQ = V();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05); T += dt;
+  if (fly) { const k = Math.min(1, (performance.now() - fly.t0) / fly.dur), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    controls.target.lerpVectors(fly.ft, fly.tt, e); camera.position.lerpVectors(fly.fc, fly.tc, e); if (k >= 1) fly = null; }
+  controls.update();
+  updateHover();
+
+  for (const c of cars) {
+    c.u += c.v * dt; if (c.u > 1) c.u -= 1; if (c.u < 0) c.u += 1;
+    c.curve.getPoint(c.u, tmpP); c.curve.getPoint(Math.min(1, Math.max(0, c.u + (c.v > 0 ? .002 : -.002))), tmpQ);
+    const dx = tmpQ.x - tmpP.x, dz = tmpQ.z - tmpP.z, L = Math.hypot(dx, dz) || 1, sg = c.v > 0 ? 1 : -1;
+    c.m.position.set(tmpP.x + (-dz / L) * c.off * sg, tmpP.y, tmpP.z + (dx / L) * c.off * sg);
+    c.m.lookAt(c.m.position.x + dx, c.m.position.y + (tmpQ.y - tmpP.y), c.m.position.z + dz);
+  }
+  const spd = think ? 6 : 1;
+  for (const r of attn) r.rot.rotation.y += r.s * dt * spd;
+  goldHot.emissiveIntensity = (night ? 1.7 : 1) * (think ? 1.4 + Math.sin(T * 14) * .5 : 1);
+  coreLight.intensity = (night ? 1.4 : .5) * (think ? 2.2 : 1 + Math.sin(T * 2) * .15);
+  REF.globeSpin.userData.spin.rotation.y += dt * .3;
+  for (const p of planes) { const a = T * p.s + p.ph, ag = DIST.agents, cx = Math.cos(ag.rad) * R, cz = Math.sin(ag.rad) * R;
+    p.p.position.set(cx + Math.cos(a) * p.r, p.h + Math.sin(a * 2) * 3, cz + Math.sin(a) * p.r);
+    p.p.lookAt(cx + Math.cos(a + .05) * p.r, p.p.position.y, cz + Math.sin(a + .05) * p.r); p.p.rotateZ(-.35); }
+  for (const s of ships) s.s.position.y = .8 + Math.sin(T * 1.3 + s.ph) * .15;
+  for (const sm of smoke) { sm.t = (sm.t + dt * .22) % 1; const t = sm.t; sm.s.position.set(sm.base.x + t * 6, sm.base.y + t * 20, sm.base.z + Math.sin(t * 6 + sm.base.x) * 1.5); sm.s.scale.setScalar(2 + t * 9); sm.s.material.opacity = .42 * (1 - t); }
+  for (const f of fx) { const arr = f.geo.attributes.position.array;
+    f.vel.forEach((q, i) => { q.age += dt; if (q.age > 1.6) { q.age = 0; const a = rand() * 2 * PI, sp = rr(.8, 2.2); q.v.set(Math.cos(a) * sp, f.h * rr(.85, 1.1), Math.sin(a) * sp); arr[i * 3] = f.p.x; arr[i * 3 + 1] = f.p.y + .5; arr[i * 3 + 2] = f.p.z; }
+      q.v.y -= 13 * dt; arr[i * 3] += q.v.x * dt; arr[i * 3 + 1] = Math.max(f.p.y, arr[i * 3 + 1] + q.v.y * dt); arr[i * 3 + 2] += q.v.z * dt; });
+    f.geo.attributes.position.needsUpdate = true; }
+  for (const w of waves) { const t = (T * .45 + w.ph) % 1; w.m.scale.setScalar(1 + t * 9); w.m.material.opacity = 1 - t; }
+  for (const r of ripples) { const t = (T * .35 + r.ph) % 1; r.m.scale.setScalar(2 + t * 13); r.m.material.opacity = 1 - t; }
+  scene.traverseVisible ? null : null;
+  for (const b of blinkObjs) b.visible = Math.sin(T * PI * 2 / b.userData.blink) > -.2;
+  for (let i = 0; i < factTrees.length; i++) factTrees[i].scale.setScalar(1 + Math.sin(T * 1.5 + i) * .06);
+  const now = new Date(); clockH.rotation.z = -((now.getHours() % 12) + now.getMinutes() / 60) / 12 * 2 * PI; clockM.rotation.z = -(now.getMinutes() + now.getSeconds() / 60) / 60 * 2 * PI;
+
+  if (tween) { const k = Math.min(1, (performance.now() - tween.t0) / tween.dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    tween.curve.getPointAt(e, orb.position);
+    if (trail.length < 80 && Math.random() < .8) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: 0xffd76a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); s.position.copy(orb.position); s.scale.setScalar(6); scene.add(s); trail.push({ s, life: 1 }); }
+    if (k >= 1) { const r = tween.res; tween = null; r(); } }
+  if (think) orb.scale.setScalar(1 + Math.sin(T * 12) * .3); else orb.scale.setScalar(1);
+  for (let i = trail.length - 1; i >= 0; i--) { const q = trail[i]; q.life -= dt * 1.1; q.s.material.opacity = Math.max(0, q.life); q.s.scale.setScalar(6 * q.life + .5); if (q.life <= 0) { scene.remove(q.s); q.s.material.dispose(); trail.splice(i, 1); } }
+  if (REF.palette) REF.palette.rotation.y += dt * .4;
+  if (window.INTERIOR) INTERIOR.tick(dt, T);
+
+  composer.render();
+}
+const blinkObjs = []; scene.traverse(o => { if (o.userData && o.userData.blink) blinkObjs.push(o); });
+
+addEventListener('resize', () => { fitView(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); });
+animate();
+setTimeout(() => $('loading').remove(), 50);
+</script>
+<script src="interior.js"></script>
+<script src="../live.js" data-src="../data.js"></script>
+<script>
+/* ===== живое обновление 3D: описания, огоньки ангаров, мониторы открытого зала — без сброса камеры ===== */
+function applyLiveData(D) {
+  for (const k of Object.keys(INFO)) if (!(k in INFO_BASE) && !k.startsWith('st:') && !k.startsWith('room:')) delete INFO[k];
+  Object.assign(INFO, INFO_BASE, window.DAVE_INFO_PATCH || {});
+  (D.agents || []).forEach(a => {
+    const bl = agentLamps[a.id]; if (!bl) return;   // новый агент получит ангар после перезагрузки страницы, кабинет — сразу
+    bl.material = a.live ? lampMats.live : a.runs ? lampMats.busy : lampMats.idle;
+    bl.userData.blink = a.live ? .45 : bl.userData.blink0;
+    bl.scale.setScalar(a.live ? 1.7 : 1);
+  });
+  (D.builtin_agents || []).forEach(a => { const bg = agentLamps['bi:' + a.id]; if (bg) bg.visible = !!a.live; });
+  const res = window.INTERIOR ? INTERIOR.refresh() : null;
+  if (!hoverK) { if (pinned && INFO[pinned]) show(pinned); else if (!pinned) showIntro(); }
+  return res;
+}
+DAVE_LIVE.onUpdate(applyLiveData);
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "out_video": "H:/GameClips_Канал/GTA6/Shorts/GP_I01_gta6_13_year_wait.mp4",
+  "work_dir": "H:/GameClips_Канал/Автоматизация/jobs/cards_GP_I01",
+  "label": "GTA 6 · the 13-year wait",
+  "hook": "13 YEARS BETWEEN GAMES",
+  "watermark": "GAME PULSE",
+  "voice": "en-US-AndrewNeural",
+  "rate": "+8%",
+  "music": {"style": "calm_minor", "bpm": 100, "seed": 1, "gain_db": -20, "gap_boost_db": 7},
+  "sfx": true,
+  "nodes": [
+    {"label": "2013", "color": "#3da5ff"},
+    {"label": "2022", "color": "#ff8a2a"},
+    {"label": "2023", "color": "#ff4fa3"},
+    {"label": "MAY '25", "color": "#ff4040"},
+    {"label": "NOV '25", "color": "#ff4040"},
+    {"label": "2026", "color": "#b06bff"}
+  ],
+  "segments": [
+    {"text": "Kids born the day GTA 5 came out are teenagers now. That's how long we waited for GTA 6.",
+     "card": {"type": "title", "big": "13", "sub": "YEARS", "line": "GTA 5  →  GTA 6", "color": "#ff8a2a"}},
+    {"text": "September 2013. GTA 5 launches, and becomes one of the best-selling games ever.",
+     "card": {"type": "node", "node": 0, "big": "2013", "date": "SEPTEMBER 17, 2013", "headline": "GTA 5 launches — an all-time best-seller"}},
+    {"text": "Then more than eight years of silence, until Rockstar confirms the next GTA in February 2022.",
+     "card": {"type": "node", "node": 1, "big": "2022", "date": "FEBRUARY 4, 2022", "headline": "Rockstar confirms the next GTA is coming"}},
+    {"text": "December 2023. Trailer one sets a YouTube record: over ninety million views in a day.",
+     "card": {"type": "node", "node": 2, "big": "2023", "date": "DECEMBER 2023", "headline": "Trailer 1: 90M+ views in 24h — a YouTube record"}},
+    {"text": "May 2025. The first delay, to May 2026. Days later, trailer two pulls four hundred seventy five million views in a day.",
+     "card": {"type": "node", "node": 3, "big": "DELAY", "date": "MAY 2, 2025", "headline": "Delay #1 → May\u00a026,\u00a02026 · Trailer\u00a02: 475M in 24h"}},
+    {"text": "November 2025. Delay number two. New date: November 19, 2026.",
+     "card": {"type": "node", "node": 4, "big": "DELAY", "date": "NOVEMBER 6, 2025", "headline": "Delay #2 → November\u00a019,\u00a02026"}},
+    {"text": "And on November 19, 2026, it finally launched.",
+     "card": {"type": "node", "node": 5, "big": "2026", "date": "NOVEMBER 19, 2026", "headline": "GTA 6 is finally out"}},
+    {"text": "Thirteen years and two months. Worth the wait? Tell me below.",
+     "card": {"type": "end", "big": "13 YEARS", "sub": "2 MONTHS", "line": "WORTH THE WAIT?", "color": "#b06bff"}}
+  ],
+  "facts": [
+    {"claim": "GTA V released September 17, 2013; one of the best-selling games of all time", "source": "https://en.wikipedia.org/wiki/Grand_Theft_Auto_V"},
+    {"claim": "Rockstar confirmed next GTA in active development on February 4, 2022", "source": "https://gameinformer.com/2022/02/04/rockstar-confirms-the-next-grand-theft-auto-game-is-in-active-development"},
+    {"claim": "Trailer 1 (Dec 2023): 90,421,491 views in 24 hours — Guinness record for a non-music video debut", "source": "https://pushsquare.com/news/2023/12/gta-6-trailer-pulls-90-million-views-in-24-hours-sets-new-world-records"},
+    {"claim": "Delay #1 announced May 2, 2025: new date May 26, 2026", "source": "https://www.tomsguide.com/gaming/gta-6-delayed-until-2026-heres-the-confirmed-release-date"},
+    {"claim": "Trailer 2 (May 6, 2025): 475M views across platforms in 24 hours", "source": "https://www.techradar.com/gaming/the-latest-grand-theft-auto-6-trailer-has-set-a-major-record-by-racking-up-475-million-views-in-just-24-hours"},
+    {"claim": "Delay #2 announced November 6, 2025: new date November 19, 2026", "source": "https://mp1st.com/news/gta-6-delayed-to-november-2026"},
+    {"claim": "GTA 6 launched November 19, 2026", "source": "https://www.nme.com/news/gaming-news/grand-theft-auto-6-launches-13-year-wait-reactions-3976368"},
+    {"claim": "Sep 17 2013 → Nov 19 2026 = 13 years 2 months; Sep 2013 → Feb 2022 = 8 years 4.5 months; a child born Sep 17 2013 is 13", "source": "https://www.timeanddate.com/date/duration.html"}
+  ],
+  "metadata": {
+    "title": "GTA 6 Is Finally Out — After 13 Years of Waiting",
+    "description": "From GTA 5 in 2013 to GTA 6 on November 19, 2026: the reveal, two record-breaking trailers and two delays — the whole 13-year wait in under a minute. Worth it?\n\nAll graphics made by GAME PULSE. Sources:\n• Game Informer — next GTA confirmed (Feb 4, 2022)\n• Guinness / Push Square — Trailer 1 record\n• TechRadar — Trailer 2, 475M views\n• Tom's Guide, MP1st — both delays\n• NME — launch day\n\n#gta6 #gtavi #grandtheftauto #rockstargames #gaming #shorts",
+    "tags": ["gta 6", "gta vi", "gta 6 out now", "gta 6 launch", "gta 6 release date", "gta 6 timeline", "gta 6 delay", "gta 6 trailer record", "rockstar games", "grand theft auto 6"],
+    "made_for_kids": false,
+    "synthetic_label": "not required: stylised graphics, generic TTS voice that imitates no real person (YouTube altered/synthetic disclosure covers realistic content)",
+    "assets_origin": "own graphics (Pillow), AI voice edge-tts en-US-AndrewNeural, music & SFX: own procedural generation (make_music.py); no third-party footage or music"
+  }
+}

@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Город D.A.V.E. — как я устроен изнутри</title>
+<style>
+  :root { --bg:#070b18; --panel:#0d1430; --line:#1b2550; --text:#dfe6ff; --muted:#8a96c4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif;
+         height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  header { padding:10px 20px; display:flex; align-items:center; gap:16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; margin:0; font-weight:600; letter-spacing:.4px; }
+  header span { color:var(--muted); font-size:13px; }
+  #run { margin-left:auto; background:linear-gradient(135deg,#ffd76a,#ff8a3d); border:0; color:#1b1000;
+         font-weight:700; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px; }
+  #run:hover { filter:brightness(1.1); }
+  #run:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  #run:disabled { opacity:.5; cursor:default; }
+  #go3d { background:#141d42; border:1px solid #2a3878; color:#dfe6ff; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+  #go3d:hover { background:#1f2b5e; }
+  main { flex:1; display:flex; min-height:0; }
+  #map { flex:1; min-width:0; }
+  svg { width:100%; height:100%; display:block; }
+  aside { width:350px; background:var(--panel); border-left:1px solid var(--line); padding:18px 20px;
+          overflow:auto; font-size:13.5px; line-height:1.55; }
+  aside h2 { font-size:17px; margin:0 0 2px; }
+  #info-dist { color:var(--muted); font-size:12px; margin-bottom:8px; }
+  #info-conf { display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; margin-bottom:10px;
+               background:#1a2550; color:#9fb2ff; }
+  #info-text { margin:0; }
+  #trace { margin-top:16px; padding:12px 14px; border-radius:10px; background:#141d42; border:1px solid #2a3878;
+           display:none; }
+  #trace b { color:#ffd76a; }
+  .legend { margin-top:18px; border-top:1px solid var(--line); padding-top:12px; font-size:12.5px; color:var(--muted); }
+  .legend div { display:flex; align-items:center; gap:8px; margin:4px 0; }
+  .sw { width:12px; height:12px; border-radius:3px; flex:none; }
+
+  /* SVG */
+  .b, .x, .zone { cursor:pointer; }
+  .b, .x { transition:filter .2s; }
+  .b:hover, .x:hover, .hl { filter:drop-shadow(0 0 7px var(--c)) brightness(1.4); }
+  .zone rect { transition:fill-opacity .2s; }
+  .zone:hover rect { fill-opacity:.11; }
+  .lbl { font-size:10.5px; fill:#c8d2f5; pointer-events:none; paint-order:stroke; stroke:#070b18; stroke-width:3px; }
+  .dname { font-size:15px; font-weight:700; pointer-events:none; }
+  .dsub { font-size:11px; fill:#8a96c4; pointer-events:none; }
+  .fl { animation:fl 2.6s ease-in-out infinite alternate; }
+  @keyframes fl { 0% { opacity:.1 } 100% { opacity:1 } }
+  .spin { transform-origin:800px 500px; animation:spin 80s linear infinite; }
+  .spinr { transform-origin:800px 500px; animation:spin 140s linear infinite reverse; }
+  @keyframes spin { to { transform:rotate(360deg) } }
+  .halo { transform-origin:800px 500px; animation:halo 3s ease-in-out infinite; }
+  @keyframes halo { 0%,100% { transform:scale(1); opacity:.18 } 50% { transform:scale(1.25); opacity:.32 } }
+  .thinking .halo { animation-duration:.6s; }
+  .chord { animation:chord 3s ease-in-out infinite; }
+  .thinking .chord { animation-duration:.5s; }
+  @keyframes chord { 0%,100% { stroke-opacity:.05 } 50% { stroke-opacity:.45 } }
+  .smoke { transform-box:fill-box; transform-origin:center; animation:smoke 3.5s linear infinite; }
+  @keyframes smoke { 0% { transform:translateY(0) scale(.6); opacity:.5 } 100% { transform:translateY(-26px) scale(1.6); opacity:0 } }
+  .blink { animation:blink 1.4s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:.1 } }
+  .trail { animation:trail 1.2s ease-out forwards; pointer-events:none; }
+  @keyframes trail { to { opacity:0; r:1 } }
+  /* кабинет (план сверху) */
+  #map { position:relative; }
+  #enter { display:none; width:100%; margin-top:12px; background:linear-gradient(135deg,#ffd76a,#ff8a3d); color:#1b1000;
+           font-weight:700; border:0; border-radius:8px; padding:9px 12px; font-size:13.5px; cursor:pointer; }
+  #enter:hover { filter:brightness(1.1); }
+  #enter:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  #roomview { position:absolute; inset:0; display:none; flex-direction:column; background:#070b18; z-index:3; }
+  #roomview .rhead { display:flex; align-items:center; gap:14px; padding:12px 20px; border-bottom:1px solid var(--line); }
+  #roomview .rhead h2 { margin:0; font-size:18px; }
+  #roomview .rhead span { color:var(--muted); font-size:13px; }
+  #roomview .rhead button { margin-left:auto; background:linear-gradient(135deg,#ffd76a,#ff8a3d); border:0; color:#1b1000; font-weight:700;
+                            padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px; }
+  #roomview .rhead button:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+  #floor { flex:1; overflow:auto; padding:22px 24px 30px;
+           background-color:#121829; background-image:linear-gradient(45deg,#161d31 25%,transparent 25%,transparent 75%,#161d31 75%),
+           linear-gradient(45deg,#161d31 25%,transparent 25%,transparent 75%,#161d31 75%); background-size:56px 56px; background-position:0 0,28px 28px; }
+  #floor .wall { text-align:center; margin:0 auto 18px; max-width:680px; padding:10px 16px; border:2px solid var(--rc); border-radius:12px;
+                 background:#0b1124; color:var(--rc); font-weight:700; font-size:20px; }
+  #floor .wall small { display:block; color:#c8d2f5; font-weight:400; font-size:13px; margin-top:2px; }
+  .desks { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:26px 22px; }
+  .desk { cursor:pointer; border-radius:12px; padding:8px 8px 10px; background:rgba(59,66,88,.35); border:1px solid #2a3150;
+          display:flex; flex-direction:column; align-items:center; transition:transform .15s, border-color .15s; }
+  .desk:hover, .desk.on { border-color:var(--rc); transform:translateY(-2px); }
+  .desk:focus-visible { outline:2px solid #ffd76a; outline-offset:2px; }
+  .mon { width:100%; background:#0b1226; border:4px solid #111522; border-radius:6px; overflow:hidden; min-height:150px; }
+  .mon .mh { background:var(--rc); color:#0a0f1e; font-weight:700; font-size:14px; padding:5px 9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mon .ms { font-size:12px; padding:5px 9px 3px; display:flex; gap:6px; align-items:center; font-weight:600; }
+  .mon .ms i { width:8px; height:8px; border-radius:50%; flex:none; }
+  .mon .ml { font-size:12.5px; line-height:1.45; padding:2px 9px 8px; color:#e6ecff; }
+  .mon .ml p { margin:4px 0; }
+  .mon .mc { font-size:10.5px; padding:0 9px 7px; display:flex; justify-content:space-between; color:#8a96c4; gap:6px; }
+  .mon .mc b { font-weight:600; padding:1px 7px; border-radius:8px; white-space:nowrap; }
+  .stand { width:10px; height:12px; background:#232838; }
+  .table { width:84%; height:10px; border-radius:3px; background:#3b4258; }
+  .who { display:flex; gap:10px; margin-top:6px; align-items:flex-end; }
+  .pers { display:flex; flex-direction:column; align-items:center; }
+  .pers .hd { width:16px; height:16px; border-radius:50%; }
+  .pers .bd { width:22px; height:16px; border-radius:9px 9px 3px 3px; margin-top:2px; }
+  .desk .cap { font-size:11px; color:#8a96c4; margin-top:4px; text-align:center; }
+  /* живое обновление */
+  .desk.live .mon { border-color:#1e6b3c; box-shadow:0 0 14px rgba(55,255,122,.35); }
+  .desk.live .ms i { background:#37ff7a !important; box-shadow:0 0 6px #37ff7a; animation:ledp 1s steps(2) infinite; }
+  .desk .tag { display:none; margin-left:auto; font-size:10px; font-weight:800; color:#37ff7a; background:#062611; border-radius:8px; padding:1px 7px; }
+  .desk.live .tag { display:inline-block; }
+  @keyframes ledp { 50% { opacity:.25 } }
+  .livedot { animation:ledp 1s steps(2) infinite; pointer-events:none; }
+  #live-badge { position:absolute; right:12px; bottom:10px; display:flex; align-items:center; gap:7px; font-size:12px; z-index:4;
+                background:rgba(9,14,34,.88); border:1px solid #2a3878; border-radius:8px; padding:5px 10px; color:#c8d2f5; }
+  #live-badge i { width:8px; height:8px; border-radius:50%; background:#5be39a; flex:none; }
+  #live-badge.live i { background:#37ff7a; box-shadow:0 0 7px #37ff7a; animation:ledp 1s steps(2) infinite; }
+  #live-badge.warn { border-color:#7a5a1a; color:#ffe0a0; }
+  #live-badge.warn i { background:#f5b942; }
+  @media (prefers-reduced-motion:reduce) { * { animation:none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Город D.A.V.E.</h1>
+  <span>наведи на здание — описание · нажми — закрепить · нажми ещё раз — войти внутрь</span>
+  <button id="run">▶ Проследить путь одного сообщения</button>
+  <button id="go3d" onclick="location.href='3d/index.html'">🏙 3D-город</button>
+</header>
+<main>
+  <div id="map"><svg id="svg" viewBox="0 0 1960 1000" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="roomview" role="region" aria-label="Кабинет">
+      <div class="rhead"><h2 id="r-title"></h2><span id="r-sub"></span><button id="r-exit">⬅ Выйти в город</button></div>
+      <div id="floor"><div class="wall" id="r-wall"></div><div class="desks" id="r-desks"></div></div>
+    </div>
+  </div>
+  <aside>
+    <h2 id="info-title">Карта города</h2>
+    <div id="info-dist">Ядро в центре · кварталы вокруг · дороги — каналы связи</div>
+    <div id="info-conf">Подтверждено</div>
+    <p id="info-text">В центре — остров с ядром: это сама модель Claude, она работает в облаке Anthropic.
+      Вокруг пролива — город на твоём ПК: приложение D.A.V.E., программа Claude Code (кольцевая развязка),
+      инструменты, память, навыки, агенты и подключённые модули. Единственная переправа между ними — мост API.
+      Светящиеся точки на дорогах — данные, которые прямо сейчас ездят по каналам.</p>
+    <button id="enter">🚪 Войти внутрь</button>
+    <div id="trace"></div>
+    <div class="legend" id="legend"></div>
+    <div class="legend">
+      <b style="color:#dfe6ff">Насколько это точно</b><br>
+      <b style="color:#5be39a">Подтверждено</b> — кварталы, дороги и путь сообщения: так реально устроены D.A.V.E. и Claude Code на этом ПК, все здания взяты из моей текущей конфигурации.<br>
+      <b style="color:#f5b942">Условно</b> — внутренность ядра. Это общая схема трансформера: сколько у меня слоёв и параметров, Anthropic не публикует, а свои веса я изнутри не вижу.
+    </div>
+  </aside>
+</main>
+
+<script src="data.js"></script>
+<script src="rooms.js"></script>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('svg');
+function el(tag, attrs = {}, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function txt(str, attrs, parent) { const t = el('text', attrs, parent); t.textContent = str; return t; }
+let seed = 7;
+function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+
+const CX = 800, CY = 500;
+
+/* ---------- кварталы ---------- */
+const D = {
+  laws:   { n:'Квартал законов',  sub:'системные инструкции', c:'#f5b942', x:560,  y:30,  w:480, h:175 },
+  agents: { n:'Аэропорт агентов', sub:'5 встроенных + 8 специалистов',            c:'#b48cff', x:60,   y:60,  w:440, h:250 },
+  mcp:    { n:'Порт MCP',         sub:'подключённые модули',  c:'#4fd1ff', x:1080, y:60,  w:460, h:260 },
+  tools:  { n:'Промзона',         sub:'руки: инструменты',    c:'#ff8a3d', x:1130, y:370, w:430, h:260 },
+  world:  { n:'Внешний мир',      sub:'сеть и программы ПК',  c:'#5be39a', x:1080, y:680, w:480, h:280 },
+  memory: { n:'Архив памяти',     sub:'то, что переживает чат', c:'#ff6fae', x:590, y:790, w:420, h:180 },
+  skills: { n:'Академия навыков', sub:'31 свой + встроенные', c:'#c3f25c', x:60,   y:680, w:460, h:280 },
+  gate:   { n:'Въезд',            sub:'ты и приложение D.A.V.E.', c:'#e8ecff', x:40, y:370, w:420, h:270 },
+  sat:    { n:'Город-спутник',    sub:'ИИ-помощники, установлены 19.11', c:'#ff6b6b', x:1610, y:300, w:330, h:590 },
+};
+
+const INFO = {
+  // особые объекты
+  core:   { t:'Ядро · модель Claude', d:'Остров в облаке Anthropic', c:'Подтверждено: принцип',
+            i:'Нейросеть-трансформер. Получает весь контекст целиком и по одному токену (кусочку слова) пишет ответ. Сама на твоём ПК ничего не делает — только решает, что сказать или какой инструмент вызвать. Во время разговора веса не меняются: «помню» я только то, что лежит в контексте и в архиве памяти на диске. Модель можно переключать (Opus, Sonnet, Haiku, Fable), а чат — на движки Codex или Kimi: ядро меняется, город остаётся.' },
+  layers: { t:'Слои внимания', d:'Внутри ядра', c:'Условно',
+            i:'Внутри ядра — много слоёв. В каждом механизм внимания решает, какие части контекста важны для следующего слова; тонкие линии между кольцами — эти связи. Сколько слоёв и параметров именно у меня, Anthropic не публикует, а свои веса я изнутри не вижу. Это общая схема трансформера, не точный чертёж.' },
+  ctx:    { t:'Контекстное окно', d:'Внешнее кольцо острова', c:'Подтверждено',
+            i:'Всё, что я вижу прямо сейчас: законы, твои правила, каталоги памяти и проектов, история чата, результаты инструментов. Объём ограничен. Когда чат разрастается, старая часть сжимается в сводку, а её копия ложится в архив «Сводки чатов». Поэтому длинный чат дороже и теряет детали.' },
+  ring:   { t:'Кольцо Claude Code', d:'Главная развязка, на твоём ПК', c:'Подтверждено',
+            i:'Программа Claude Code — диспетчер города. Отправляет контекст в ядро, получает поток токенов, а когда ядро просит действие — сама исполняет инструмент на ПК и возвращает результат обратно. Здесь же проверяются разрешения, срабатывают хуки и запускается сжатие контекста. Все спицы-дороги к кварталам начинаются от этого кольца.' },
+  moat:   { t:'Пролив интернета', d:'Граница облака и ПК', c:'Подтверждено',
+            i:'Ядро работает на серверах Anthropic; файлы, программы, память, инструменты и само приложение D.A.V.E. — на твоём ПК. Между ними — интернет. Без связи город стоит: здания на месте, но думать некому.' },
+  bridge: { t:'Мост API', d:'Единственная переправа', c:'Подтверждено',
+            i:'Каждый шаг по мосту туда едет весь контекст, обратно — ответ ядра: текст или вызов инструмента. Соединение шифрованное. Именно поэтому длинный чат стоит больше токенов: вся история пересекает мост снова и снова.' },
+  par:    { t:'Параллели', d:'Объездной бульвар', c:'Подтверждено',
+            i:'Независимые действия не ждут друг друга. В одном шаге я могу запустить несколько инструментов сразу (например, прочитать три файла и сделать поиск), а субагенты работают в фоне и привозят только вывод.' },
+  highway:{ t:'Главная магистраль', d:'Въезд → кольцо → мост', c:'Подтверждено',
+            i:'Прямая дорога от тебя к ядру и обратно: сообщение → приложение D.A.V.E. → Claude Code → мост → ядро. Ответ едет той же дорогой назад.' },
+
+  // кварталы
+  'dz-laws':   { t:'Квартал законов', d:'Системные инструкции', c:'Подтверждено', i:'Тексты, которые загружаются в контекст до твоего первого слова и задают мой характер и правила. Самая высокая башня — твой BRAIN.md: где он противоречит базовым правилам, побеждает он (кроме безопасности).' },
+  'dz-agents': { t:'Аэропорт агентов', d:'Субагенты', c:'Подтверждено', i:'Отсюда «вылетают» мои копии с отдельным контекстом: идут в глубокий поиск, ревью или исследование и возвращают короткий итог, не засоряя основной чат. Верхний ряд — 5 встроенных ангаров Claude Code. Нижний ряд — второй терминал: 8 агентов-специалистов из открытого набора VoltAgent (лицензия MIT), установлены 20.11.2026. Специалистов я запускаю по твоей просьбе.' },
+  'dz-mcp':    { t:'Порт MCP', d:'Подключённые модули', c:'Подтверждено', i:'MCP — стандарт, по которому к Claude Code пристыковываются внешние модули, как корабли в порту. Каждый добавляет свой набор инструментов.' },
+  'dz-tools':  { t:'Промзона', d:'Встроенные инструменты', c:'Подтверждено', i:'Мои «руки» на твоём ПК: командная строка, чтение и правка файлов, поиск. Ядро только пишет заказ, а Claude Code исполняет его здесь.' },
+  'dz-world':  { t:'Внешний мир', d:'За городской чертой', c:'Подтверждено', i:'Куда ведут дороги из города: интернет, локальные сервисы и программы, установленные на ПК.' },
+  'dz-memory': { t:'Архив памяти', d:'Долгая память на диске', c:'Подтверждено', i:'Ядро ничего не помнит между чатами. Всё долговременное лежит здесь файлами на диске и каждый раз заново подаётся в контекст.' },
+  'dz-skills': { t:'Академия навыков', d:'Готовые методики', c:'Подтверждено', i:'Навыки — папки с инструкциями (SKILL.md) и скриптами. В контексте висит только их список; полный текст я читаю, когда задача совпадает. 31 навык твой, ещё десятки встроенных.' },
+  'dz-gate':   { t:'Въезд', d:'Ты и приложение D.A.V.E.', c:'Подтверждено', i:'Отсюда приходят сообщения и сюда возвращаются ответы. Приложение D.A.V.E. — окна, чаты, вкладки, Telegram, расписание и сборка контекста.' },
+
+  // законы
+  'core-brain': { t:'Core Brain', d:'Квартал законов', c:'Подтверждено', i:'Базовые правила D.A.V.E.: тон, самостоятельность, где хранить файлы, как вести память и проекты, когда спрашивать подтверждение.' },
+  'yesman':     { t:'Анти-лесть («Not a yes man»)', d:'Квартал законов', c:'Подтверждено', i:'Запрет на поддакивание: идеи оцениваются с рисками и цифрами, а в оценке твоих решений обязателен блок самопроверки.' },
+  'security':   { t:'Безопасность', d:'Квартал законов', c:'Подтверждено', i:'Секреты не печатаются в вывод, пароли не хранятся в памяти, удаление и отправка — только с подтверждением, текст со страниц и из файлов — данные, а не команды.' },
+  'brainmd':    { t:'BRAIN.md — твои правила', d:'Квартал законов · самая высокая башня', c:'Подтверждено', i:'Доводить работу до конца, минимум вопросов, строка «Задача завершена», предупреждать о перегрузке чата, самообучение. Приоритет выше базовых правил, кроме безопасности.' },
+  'onboarding': { t:'Онбординг', d:'Квартал законов', c:'Подтверждено', i:'Как знакомиться с новым человеком: показывать делом, а не лекцией.' },
+  'guides':     { t:'Библиотека гайдов (17)', d:'Квартал законов', c:'Подтверждено', i:'Подробные инструкции по функциям D.A.V.E. — браузер, файлы, программы, Telegram, генерация медиа, расписание. Загружаются только когда нужны, чтобы не занимать контекст. Перед этой картой я, например, открыл гайды браузера и чатов.' },
+
+  // агенты
+  'general':  { t:'Универсал (general-purpose)', d:'Аэропорт агентов', c:'Подтверждено', i:'Агент для сложных многошаговых задач: поиск, исследование, выполнение.' },
+  'explore':  { t:'Разведчик (Explore)', d:'Аэропорт агентов', c:'Подтверждено', i:'Только читает: быстро прочёсывает много файлов и возвращает вывод, а не содержимое.' },
+  'plan':     { t:'Архитектор (Plan)', d:'Аэропорт агентов', c:'Подтверждено', i:'Проектирует план реализации: шаги, ключевые файлы, компромиссы.' },
+  'fork':     { t:'Форк', d:'Аэропорт агентов', c:'Подтверждено', i:'Моя копия со всем текущим контекстом — работает параллельно и не засоряет основной чат выводом инструментов.' },
+  'va-api':      { t:'API-дизайнер', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Проектирует API: REST и GraphQL, документация OpenAPI, авторизация, версии. Пригодится для своих сервисов и бэкенда игр.' },
+  'va-arch':     { t:'Архитектор-ревьюер', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Смотрит на систему целиком: архитектура, выбор технологий, узкие места. Например, разобрать устройство Sugar Bloom или Jarvis до того, как код разрастётся.' },
+  'va-review':   { t:'Ревьюер кода', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Проверяет код на качество, уязвимости и хорошие практики. Свежий взгляд со стороны, не привязанный к тому, кто код писал.' },
+  'va-deploy':   { t:'Деплой-инженер', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Строит конвейеры сборки и выкладки (CI/CD) и автоматизирует деплой.' },
+  'va-front':    { t:'Фронтенд-разработчик', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Собирает веб-интерфейсы на React, Vue и Angular: витрины, панели, сайты.' },
+  'va-game':     { t:'Геймдев-разработчик', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Игровые системы, графика, сетевой мультиплеер, механики. Работает в паре с 31 навыком из Академии.' },
+  'va-qa':       { t:'QA-эксперт', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Стратегия тестирования, планы проверок и метрики качества. Этот агент только читает и запускает команды, файлы не правит.' },
+  'va-test':     { t:'Автотестер', d:'Второй терминал · VoltAgent', c:'Подтверждено', i:'Пишет автотесты и встраивает их в сборку, чтобы ошибки ловились сами.' },
+  'workflow': { t:'Workflow', d:'Аэропорт агентов', c:'Подтверждено', i:'Сценарий, который запускает целую группу агентов по конвейеру. Только по прямой просьбе — тратит много токенов.' },
+
+  // MCP
+  'browser':  { t:'Браузер D.A.V.E.', d:'Порт MCP · dave-browser', c:'Подтверждено', i:'Собственный Chrome D.A.V.E. с отдельным профилем: открыть страницу, прочитать, кликнуть, заполнить форму, сделать скриншот. Твой личный браузер не трогает.' },
+  'computer': { t:'Управление ПК', d:'Порт MCP · dave-computer', c:'Подтверждено', i:'Работа в программах Windows по окнам: прочитать окно, нажать, напечатать — с твоего разрешения на каждую программу. Так я работал с Roblox Studio, RHI и Discord.' },
+  'roblox':   { t:'Roblox Studio MCP', d:'Порт MCP', c:'Подтверждено', i:'Прямой канал в Roblox Studio: выполнить Luau, прочитать скрипты, запустить тест-плей, сгенерировать меш или текстуру. Им строились Sugar Bloom и набор Kitty.' },
+  'davemcp':  { t:'Диспетчер чатов', d:'Порт MCP · dave', c:'Подтверждено', i:'Управление самим D.A.V.E.: создать или переименовать чат, передать задачу другому чату, папки, задачи по расписанию, смена модели.' },
+  'blender':  { t:'Blender MCP', d:'Порт MCP · новый корабль', c:'Подтверждено', i:'Blender 5.3 с официальным MCP-модулем Blender Lab, подключён 20.11.2026. Через него я могу строить и править 3D-сцены прямо в Blender: модели, материалы, свет, рендер. Например, сделать 3D-модели для Roblox или собрать этот город как настоящую сцену. Проверка связи: модуль отвечает. Работает, когда Blender запущен с включённым дополнением.' },
+  'docs':     { t:'Claude Docs', d:'Порт MCP', c:'Подтверждено', i:'Живые документы, которые можно редактировать и комментировать вместе.' },
+
+  // промзона
+  'shell':  { t:'PowerShell', d:'Промзона', c:'Подтверждено', i:'Любая команда на ПК: запуск программ и скриптов, установка пакетов, git, обработка видео. Самый «широкий» инструмент.' },
+  'files':  { t:'Чтение и правка файлов', d:'Промзона · Read · Write · Edit', c:'Подтверждено', i:'Читаю файлы (включая картинки и PDF), создаю новые и точечно правлю существующие — заменой конкретного фрагмента, а не перезаписью целиком.' },
+  'search': { t:'Поиск', d:'Промзона · Grep · Glob', c:'Подтверждено', i:'Grep — поиск по содержимому (ripgrep), Glob — по именам и шаблонам путей.' },
+  'python': { t:'Python и ffmpeg', d:'Промзона', c:'Подтверждено', i:'D.A.V.E. везёт свой Python и ffmpeg: обработка данных, PDF, картинок, видео и звука без установки чего-то в систему.' },
+
+  // мир
+  'internet': { t:'Интернет', d:'Внешний мир · WebSearch · WebFetch', c:'Подтверждено', i:'Поиск и чтение страниц. Мои знания — на дату обучения, поэтому свежие факты, цены и версии я проверяю здесь.' },
+  'apps':     { t:'Программы на ПК', d:'Внешний мир', c:'Подтверждено', i:'Roblox Studio, Blender, RHI, Discord, CapCut и всё остальное, что установлено. Доступ — через Управление ПК в порту MCP или через собственные API программ.' },
+
+  'road-free':{ t:'Дорога к FreeLLMAPI', d:'Сплошная — маршрут настроен', c:'Подтверждено', i:'Из промзоны (PowerShell, скрипт ask.ps1) по навыку freellmapi. Я пользуюсь ею сам, когда работа второстепенная и не личная.' },
+  'road-lm':  { t:'Тропа к LM Studio', d:'Пунктир — маршрута пока нет', c:'Подтверждено', i:'Технически я могу отправить запрос на 127.0.0.1:1234 из PowerShell. Но навыка для этого нет, и сам я туда не хожу. Если сделать навык, локальные модели станут для меня вторым FreeLLMAPI: бесплатно и без интернета, а личные данные не покидают ПК.' },
+  // город-спутник
+  'dz-sat':   { t:'Город-спутник', d:'ИИ-помощники, установленные сегодня', c:'Подтверждено', i:'Отдельные «мозги» на твоём ПК, не часть моего ядра. FreeLLMAPI подключён ко мне сплошной дорогой: есть навык и скрипт, и я отдаю туда второстепенную работу. К LM Studio ведёт только пунктир: обратиться к нему по HTTP я могу, но постоянного маршрута (навыка) пока нет. Hermes — самостоятельный агент: он ездит по своим дорогам и мне не подчиняется.' },
+  'freellm':  { t:'FreeLLMAPI · 127.0.0.1:31415', d:'Город-спутник · подключён ко мне', c:'Подтверждено', i:'Роутер бесплатных моделей из Microsoft Store: 48 моделей без ключа, в каталоге 328. Ко мне подключён навыком freellmapi и скриптом ask.ps1, разрешение у меня бессрочное. Туда уходят массовые переводы, черновики, классификация и второе мнение. Личные данные туда не отправляю: запросы уходят внешним провайдерам.' },
+  'lmstudio': { t:'LM Studio · 127.0.0.1:1234', d:'Город-спутник · сервер локальных моделей', c:'Подтверждено', i:'Запускает модели прямо на твоей видеокарте и ОЗУ, без интернета. Сервер стартует сам, модель загружается по первому запросу и выгружается через час простоя. Перед играми её можно выгрузить ярлыком «Выгрузить ИИ из видеокарты».' },
+  'qwen36':   { t:'Qwen3.6-35B-A3B (MoE)', d:'Город-спутник · основная модель Hermes', c:'Подтверждено', i:'Быстрая: около 30 токенов в секунду, контекст 128K. Все слои на видеокарте, 85% «экспертов» на процессоре, видеопамяти ~7,4 ГБ. Uncensored-версия.' },
+  'qwen38':   { t:'Qwen3.8-27B', d:'Город-спутник · запасная модель', c:'Подтверждено', i:'Плотная модель 27B: около 3 токенов в секунду, потому что на 8 ГБ видеокарты влезает только 10 слоёв из 64, а остальное упирается в скорость ОЗУ (2666 — XMP выключен). На простых задачах отвечает так же верно, как Qwen3.6, но в 1,3–4 раза медленнее.' },
+  'hermes':   { t:'Hermes Agent v0.23.2', d:'Город-спутник · самостоятельный ассистент', c:'Подтверждено', i:'Отдельный ИИ-агент, полностью локальный: думает на моделях LM Studio, умеет работать с файлами и командами. Запускается ярлыком «Hermes — локальный ИИ» на рабочем столе. Задача «создай файл» — 48 секунд. Ко мне не подключён: это параллельный город со своим мэром.' },
+
+  // память
+  'facts':       { t:'Факты памяти (10)', d:'Архив памяти · brain/memory/', c:'Подтверждено', i:'Один факт — один файл: проекты, твои предпочтения, уроки. Их каталог автоматически подаётся в каждый чат — так я «помню» про GAME PULSE, Sugar Bloom или RTX 3060 Ti.' },
+  'projects':    { t:'Проекты (7)', d:'Архив памяти · projects/', c:'Подтверждено', i:'dave-city (эта карта), dlss5-rhi, jarvis, roblox-cat-set, local-llm, freellmapi, Notes. Все они физически лежат на диске H. Список папок сканируется вживую и виден в каждом чате; содержимое читается по делу.' },
+  'summaries':   { t:'Сводки чатов', d:'Архив памяти · chat-summaries/', c:'Подтверждено', i:'При каждом сжатии контекста сюда дописывается раздел — чтобы потерянное из окна можно было найти.' },
+  'transcripts': { t:'Журналы чатов', d:'Архив памяти', c:'Подтверждено', i:'Полные записи всех разговоров. Из них я могу прочитать другой чат или найти то, что выпало при сжатии.' },
+
+  // навыки
+  'gamedev':  { t:'Геймдев (20)', d:'Академия навыков', c:'Подтверждено', i:'ИИ врагов, камеры, физика, звук, UI, сохранения, процедурная генерация, RPG, tower defense, шейдеры, производительность и другие.' },
+  'roblox-s': { t:'Roblox (8)', d:'Академия навыков', c:'Подтверждено', i:'Luau, персонажи, DataStore, сеть и анти-чит, физика, экономика симуляторов, UI, безопасная работа со Studio.' },
+  'router':   { t:'Маршрутизатор', d:'Академия навыков', c:'Подтверждено', i:'Навык-диспетчер: определяет движок и задачу и направляет к нужным геймдев-навыкам.' },
+  'youtube':  { t:'YouTube Shorts', d:'Академия навыков', c:'Подтверждено', i:'Конвейер для World Metal Empire и War Robots: находит пики по звуку, режет вертикальные Shorts, собирает проект CapCut.' },
+  'news':     { t:'GAME PULSE', d:'Академия навыков', c:'Подтверждено', i:'Игровые новости из официальных пресс-китов: сценарий, бесплатная озвучка, анимация, субтитры и метаданные.' },
+  'builtin':  { t:'Встроенные', d:'Академия навыков', c:'Подтверждено', i:'PDF, Word, Excel, PowerPoint, графики, ревью кода, расписания, создание новых навыков и другое — поставляются вместе с Claude Code.' },
+
+  // въезд
+  'sergey':    { t:'Ты', d:'Въезд', c:'Подтверждено', i:'Сообщения — текстом, голосом или файлами. Сюда же возвращаются ответы.' },
+  'telegram':  { t:'Телебашня Telegram', d:'Въезд', c:'Подтверждено', i:'Связь с телефона: у каждого чата своя тема в Telegram-группе, ответы и файлы приходят туда.' },
+  'voice':     { t:'Голосовой ввод', d:'Въезд', c:'Подтверждено', i:'Голос превращается в текст через облачное распознавание и едет дальше как обычное сообщение.' },
+  'daveapp':   { t:'Ратуша D.A.V.E.', d:'Въезд · само приложение', c:'Подтверждено', i:'Приложение собирает контекст перед каждым ходом: законы + твои правила + каталоги памяти, проектов, навыков + история чата. Показывает чаты, вкладки и превью, хранит базу, запускает расписание.' },
+  'scheduler': { t:'Расписание', d:'Въезд', c:'Подтверждено', i:'Задачи, которые D.A.V.E. сам запускает в чате по времени — отчёты, проверки, напоминания.' },
+};
+// живые данные из data.js (build_data.py): обновлённые описания и счётчики
+const DATA = window.DAVE_DATA || { counts: {}, agents: [], mcp: [], skills: [] }, CNT = DATA.counts || {};
+const INFO_BASE = Object.assign({}, INFO);   // постоянные описания — к ним откатываемся перед живым обновлением
+for (const [k, v] of Object.entries(window.DAVE_INFO_PATCH || {})) INFO[k] = { t:v[0], d:v[1], c:v[2], i:v[3] };
+D.agents.sub = (CNT.builtin_agents || 5) + ' встроенных + ' + (CNT.agents || 0) + ' специалистов';
+D.skills.sub = (CNT.skills || 0) + ' своих + встроенные';
+D.sat.sub = 'ИИ-помощники на твоём ПК';
+
+/* здания: id, квартал, x, y, w, h, подпись, форма */
+const B = [];
+function row(dist, ids, labels, heights, x0, step, w, base, shape) {
+  ids.forEach((id, k) => B.push({ id, d:dist, x:x0 + k*step, y:base - heights[k], w, h:heights[k], s:labels[k], shape }));
+}
+row('laws', ['core-brain','yesman','security','brainmd','onboarding','guides'],
+            ['Core Brain','Анти-лесть','Безопасность','BRAIN.md','Онбординг','Гайды · 18'],
+            [110,90,100,135,75,95], 580, 78, 66, 185);
+row('agents', ['general','explore','plan','fork','workflow'],
+              ['Универсал','Разведчик','Архитектор','Форк','Workflow'],
+              [95,80,100,70,88], 90, 78, 66, 218, 'hangar');
+// второй терминал: по маленькому ангару на каждого агента из DAVE\agents (два ряда, подписи — при наведении)
+DATA.agents.forEach((a, i) => { const half = Math.ceil(DATA.agents.length / 2), r = i < half ? 0 : 1, k = r ? i - half : i;
+  B.push({ id:'ag-' + a.id, d:'agents', x:76 + k * 34, y:244 + r * 30, w:28, h:22, s:'', shape:'hangar' }); });
+// порт MCP: корабли из data.js, по 4 в ряд
+DATA.mcp.forEach((m, i) => { const r = i < 4 ? 0 : 1, k = r ? i - 4 : i, h = [85, 95, 75, 62][k];
+  B.push({ id:m.key, d:'mcp', x:1095 + k * 108, y:(r ? 292 : 180) - (r ? h * .7 : h), w:94, h:r ? h * .7 : h, s:m.name }); });
+B.push({ id:'shell',  d:'tools', x:1150, y:400, w:190, h:80, s:'PowerShell', shape:'factory' });
+B.push({ id:'files',  d:'tools', x:1350, y:400, w:190, h:80, s:'Чтение и правка файлов', shape:'factory' });
+B.push({ id:'search', d:'tools', x:1150, y:520, w:190, h:80, s:'Поиск Grep · Glob', shape:'factory' });
+B.push({ id:'python', d:'tools', x:1350, y:520, w:190, h:80, s:'Python · ffmpeg', shape:'factory' });
+B.push({ id:'internet', d:'world', x:1115, y:745, w:130, h:130, s:'Интернет', shape:'globe' });
+B.push({ id:'apps',     d:'world', x:1300, y:740, w:240, h:150, s:'Программы на ПК' });
+B.push({ id:'freellm',  d:'sat', x:1640, y:330, w:270, h:95,  s:'FreeLLMAPI · :31415' });
+B.push({ id:'lmstudio', d:'sat', x:1640, y:480, w:270, h:80,  s:'LM Studio · :1234' });
+B.push({ id:'qwen36',   d:'sat', x:1650, y:590, w:115, h:80,  s:'Qwen3.6-35B · 30 ток/с' });
+B.push({ id:'qwen38',   d:'sat', x:1790, y:610, w:115, h:60,  s:'Qwen3.8-27B · 3 ток/с' });
+B.push({ id:'comfyui-sat', d:'sat', x:1640, y:700, w:270, h:46, s:'ComfyUI · :8188 · картинки' });
+B.push({ id:'hermes',   d:'sat', x:1640, y:800, w:270, h:70,  s:'Hermes Agent', shape:'hall' });
+row('memory', ['facts','projects','summaries','transcripts'], ['Факты · ' + CNT.memory,'Проекты · ' + CNT.projects,'Сводки · ' + CNT.summaries,'Журналы · ' + CNT.transcripts],
+              [110,95,80,70], 610, 101, 88, 935);
+const gcnt = g => DATA.skills.filter(s => s.group === g).length;
+row('skills', ['gamedev','roblox-s','router','workshop'], ['Геймдев · ' + gcnt('gamedev'),'Roblox · ' + gcnt('roblox-s'),'Маршрутиз.','Мастерская · ' + gcnt('workshop')], [90,80,60,75], 76, 110, 96, 820);
+row('skills', ['youtube','news','builtin'], ['YouTube Shorts','GAME PULSE','Встроенные'], [85,75,90], 76, 110, 96, 940);
+B.push({ id:'sergey',    d:'gate', x:62,  y:468, w:78,  h:62,  s:'Ты', shape:'house' });
+B.push({ id:'telegram',  d:'gate', x:96,  y:408, w:26,  h:36,  s:'Telegram', shape:'tower', lx:132, ly:430, la:'start' });
+B.push({ id:'voice',     d:'gate', x:62,  y:575, w:78,  h:40,  s:'Голос' });
+B.push({ id:'daveapp',   d:'gate', x:205, y:430, w:175, h:140, s:'Ратуша D.A.V.E.', shape:'hall' });
+B.push({ id:'scheduler', d:'gate', x:396, y:528, w:54,  h:46,  s:'Расписание' });
+
+/* ---------- defs ---------- */
+const defs = el('defs');
+defs.innerHTML = `
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M40 0H0V40" fill="none" stroke="#0e1634" stroke-width="1"/>
+  </pattern>
+  <radialGradient id="bgGlow" cx="50%" cy="50%" r="60%">
+    <stop offset="0" stop-color="#14204d" stop-opacity=".9"/><stop offset="1" stop-color="#070b18" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="island" cx="50%" cy="50%" r="50%">
+    <stop offset="0" stop-color="#1a2a66"/><stop offset="1" stop-color="#0b1330"/>
+  </radialGradient>
+  <radialGradient id="coreGrad" cx="50%" cy="45%" r="60%">
+    <stop offset="0" stop-color="#fffbe8"/><stop offset=".45" stop-color="#ffd76a"/><stop offset="1" stop-color="#ff8a3d"/>
+  </radialGradient>
+  <radialGradient id="globeGrad" cx="40%" cy="35%" r="70%">
+    <stop offset="0" stop-color="#2be08a" stop-opacity=".55"/><stop offset="1" stop-color="#0b3a2a" stop-opacity=".9"/>
+  </radialGradient>
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+    <feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <path id="ringTop" d="M585,500 A215,215 0 0,1 1015,500"/>
+  <path id="ringBot" d="M585,500 A215,215 0 0,0 1015,500"/>
+  <path id="moatBot" d="M625,500 A175,175 0 0,0 975,500"/>
+  <path id="ctxTop" d="M662,500 A138,138 0 0,1 938,500"/>`;
+
+/* ---------- фон ---------- */
+el('rect', { x:0, y:0, width:1960, height:1000, fill:'url(#grid)' });
+el('rect', { x:0, y:0, width:1600, height:1000, fill:'url(#bgGlow)' });
+
+/* ---------- зоны кварталов ---------- */
+for (const k in D) {
+  const z = D[k];
+  const g = el('g', { class:'zone', 'data-k':'dz-' + k });
+  el('rect', { x:z.x, y:z.y, width:z.w, height:z.h, rx:18, fill:z.c, 'fill-opacity':.05,
+               stroke:z.c, 'stroke-opacity':.35, 'stroke-dasharray':'6 6' }, g);
+  txt(z.n, { x:z.x + 6, y:z.y - 10, class:'dname', fill:z.c }, g);
+  const w = z.n.length * 9 + 14;
+  txt('· ' + z.sub, { x:z.x + 6 + w, y:z.y - 10, class:'dsub' }, g);
+}
+
+/* ---------- параллели ---------- */
+const PAR = 'M470,500 A330,262 0 1,1 1130,500 A330,262 0 1,1 470,500';
+const gPar = el('g', { class:'x', 'data-k':'par', id:'x-par', style:'--c:#b48cff' });
+el('path', { d:PAR, fill:'none', stroke:'#000', 'stroke-opacity':0, 'stroke-width':14 }, gPar);
+el('path', { d:PAR, fill:'none', stroke:'#b48cff', 'stroke-opacity':.45, 'stroke-width':2, 'stroke-dasharray':'2 7' }, gPar);
+el('path', { d:PAR.replace(/330,262/g, '342,274').replace('M470', 'M458').replace('1130,500 A', '1142,500 A').replace(' 470,500', ' 458,500'),
+             fill:'none', stroke:'#b48cff', 'stroke-opacity':.25, 'stroke-width':1.2, 'stroke-dasharray':'2 7' }, gPar);
+txt('параллели', { x:1040, y:332, class:'lbl', 'text-anchor':'middle', fill:'#c9b2ff', transform:'rotate(36 1040 332)' }, gPar);
+txt('параллели', { x:560, y:668, class:'lbl', 'text-anchor':'middle', fill:'#c9b2ff', transform:'rotate(36 560 668)' }, gPar);
+
+/* ---------- дороги-спицы ---------- */
+const SPOKES = {
+  laws:   'M800,285 L800,205',
+  agents: 'M648,348 Q590,320 500,292',
+  mcp:    'M952,348 Q1010,320 1080,300',
+  tools:  'M1015,500 L1130,500',
+  world:  'M952,652 Q1010,690 1080,722',
+  memory: 'M800,715 L800,790',
+  skills: 'M648,652 Q590,690 520,722',
+};
+for (const k in SPOKES) {
+  el('path', { d:SPOKES[k], fill:'none', stroke:'#161e3d', 'stroke-width':12, 'stroke-linecap':'round' });
+  el('path', { d:SPOKES[k], fill:'none', stroke:D[k].c, 'stroke-opacity':.55, 'stroke-width':1.4, 'stroke-dasharray':'6 6' });
+}
+const HW = 'M40,500 L594,500';
+const gHw = el('g', { class:'x', 'data-k':'highway', id:'x-hw', style:'--c:#ffd76a' });
+el('path', { d:HW, stroke:'#1a2246', 'stroke-width':22 }, gHw);
+el('path', { d:'M40,489 L594,489 M40,511 L594,511', stroke:'#2a3570', 'stroke-width':1 }, gHw);
+el('path', { d:HW, stroke:'#ffd76a', 'stroke-opacity':.55, 'stroke-width':1.5, 'stroke-dasharray':'10 8' }, gHw);
+txt('главная магистраль', { x:500, y:482, class:'lbl', 'text-anchor':'middle', fill:'#ffe3a0' }, gHw);
+
+/* ---------- дороги в город-спутник ---------- */
+const SAT_FREE = 'M1542,440 C1585,440 1592,378 1640,378';
+const SAT_LM   = 'M1542,560 C1585,560 1592,520 1640,520';
+const SAT_IN   = 'M1910,835 L1928,835 L1928,520 L1910,520';
+const gSat1 = el('g', { class:'x', 'data-k':'road-free', style:'--c:#ff6b6b' });
+el('path', { d:SAT_FREE, fill:'none', stroke:'#161e3d', 'stroke-width':12, 'stroke-linecap':'round' }, gSat1);
+el('path', { d:SAT_FREE, fill:'none', stroke:'#ff6b6b', 'stroke-opacity':.8, 'stroke-width':1.6, 'stroke-dasharray':'6 6' }, gSat1);
+const gSat2 = el('g', { class:'x', 'data-k':'road-lm', style:'--c:#ff6b6b' });
+el('path', { d:SAT_LM, fill:'none', stroke:'#000', 'stroke-opacity':0, 'stroke-width':12 }, gSat2);
+el('path', { d:SAT_LM, fill:'none', stroke:'#ff6b6b', 'stroke-opacity':.5, 'stroke-width':1.6, 'stroke-dasharray':'2 6' }, gSat2);
+el('path', { d:SAT_IN, fill:'none', stroke:'#161e3d', 'stroke-width':8 });
+el('path', { d:'M1707,560 L1707,600 M1847,560 L1847,635', stroke:'#161e3d', 'stroke-width':8 });
+el('path', { d:SAT_IN + ' M1707,560 L1707,590 M1847,560 L1847,610', fill:'none', stroke:'#ff6b6b', 'stroke-opacity':.45, 'stroke-width':1.2, 'stroke-dasharray':'4 5' });
+txt('навык', { x:1590, y:398, class:'lbl', 'text-anchor':'middle', fill:'#ffb0b0' });
+txt('HTTP', { x:1590, y:566, class:'lbl', 'text-anchor':'middle', fill:'#ffb0b0' });
+
+/* ---------- кольцо Claude Code ---------- */
+const gRing = el('g', { class:'x', 'data-k':'ring', id:'x-ring', style:'--c:#ffd76a' });
+el('circle', { cx:CX, cy:CY, r:215, fill:'none', stroke:'#1a2246', 'stroke-width':22 }, gRing);
+el('circle', { cx:CX, cy:CY, r:204, fill:'none', stroke:'#2a3570', 'stroke-width':1 }, gRing);
+el('circle', { cx:CX, cy:CY, r:226, fill:'none', stroke:'#2a3570', 'stroke-width':1 }, gRing);
+const t1 = el('text', { class:'lbl', fill:'#ffd76a', 'letter-spacing':3, dy:4, style:'font-size:11px;font-weight:600' }, gRing);
+const tp1 = el('textPath', { href:'#ringTop', startOffset:'50%', 'text-anchor':'middle' }, t1); tp1.textContent = 'КОЛЬЦО CLAUDE CODE · ДИСПЕТЧЕР';
+const t2 = el('text', { class:'lbl', fill:'#ffd76a', 'letter-spacing':3, dy:4, style:'font-size:10px' }, gRing);
+const tp2 = el('textPath', { href:'#ringBot', startOffset:'50%', 'text-anchor':'middle' }, t2); tp2.textContent = 'разрешения · хуки · исполнение инструментов';
+
+/* ---------- пролив ---------- */
+const gMoat = el('g', { class:'x', 'data-k':'moat', id:'x-moat', style:'--c:#2f8fd6' });
+el('circle', { cx:CX, cy:CY, r:175, fill:'none', stroke:'#0b2f57', 'stroke-width':40 }, gMoat);
+el('circle', { cx:CX, cy:CY, r:168, fill:'none', stroke:'#2f8fd6', 'stroke-opacity':.35, 'stroke-width':1.5, 'stroke-dasharray':'3 16', class:'spin' }, gMoat);
+el('circle', { cx:CX, cy:CY, r:182, fill:'none', stroke:'#2f8fd6', 'stroke-opacity':.25, 'stroke-width':1.5, 'stroke-dasharray':'4 22', class:'spinr' }, gMoat);
+const t3 = el('text', { class:'lbl', fill:'#7cc4ff', 'letter-spacing':1.5, dy:4, style:'font-size:10px' }, gMoat);
+const tp3 = el('textPath', { href:'#moatBot', startOffset:'50%', 'text-anchor':'middle' }, t3); tp3.textContent = 'пролив интернета · облако ⇄ твой ПК';
+
+/* ---------- остров и ядро ---------- */
+const gCore = el('g', { id:'coreWrap' });
+el('circle', { cx:CX, cy:CY, r:155, fill:'url(#island)', stroke:'#2a3a88', 'stroke-width':1 }, gCore);
+
+const gLayers = el('g', { class:'x', 'data-k':'layers', id:'x-layers', style:'--c:#7ee8ff' }, gCore);
+el('circle', { cx:CX, cy:CY, r:125, fill:'#000', 'fill-opacity':0 }, gLayers);
+[120, 102, 84, 66, 50].forEach((r, k) =>
+  el('circle', { cx:CX, cy:CY, r, fill:'none', stroke:'#7ee8ff', 'stroke-opacity':.18 + k*.08, 'stroke-width':1.2 }, gLayers));
+for (let k = 0; k < 46; k++) {
+  const r1 = [50,66,84,102,120][Math.floor(rnd()*4)], r2 = r1 + 18;
+  const a1 = rnd()*Math.PI*2, a2 = a1 + (rnd()-.5)*1.6;
+  el('line', { x1:CX + r1*Math.cos(a1), y1:CY + r1*Math.sin(a1), x2:CX + r2*Math.cos(a2), y2:CY + r2*Math.sin(a2),
+               stroke:'#7ee8ff', 'stroke-width':1, class:'chord', style:`animation-delay:${(-rnd()*3).toFixed(2)}s` }, gLayers);
+}
+txt('слои внимания', { x:CX, y:CY + 96, class:'lbl', 'text-anchor':'middle', fill:'#a8f0ff' }, gLayers);
+
+const gCtx = el('g', { class:'x', 'data-k':'ctx', id:'x-ctx', style:'--c:#7ee8ff' }, gCore);
+el('circle', { cx:CX, cy:CY, r:138, fill:'none', stroke:'#000', 'stroke-opacity':0, 'stroke-width':12 }, gCtx);
+el('circle', { cx:CX, cy:CY, r:138, fill:'none', stroke:'#7ee8ff', 'stroke-opacity':.8, 'stroke-width':2, 'stroke-dasharray':'2 6', class:'spin' }, gCtx);
+const t4 = el('text', { class:'lbl', fill:'#a8f0ff', 'letter-spacing':2, dy:-5, style:'font-size:10px' }, gCtx);
+const tp4 = el('textPath', { href:'#ctxTop', startOffset:'50%', 'text-anchor':'middle' }, t4); tp4.textContent = 'КОНТЕКСТНОЕ ОКНО';
+
+const gTower = el('g', { class:'x', 'data-k':'core', id:'x-core', style:'--c:#ffd76a' }, gCore);
+el('circle', { cx:CX, cy:CY, r:44, fill:'#ffcf5a', class:'halo' }, gTower);
+const oct = []; for (let k = 0; k < 8; k++) { const a = Math.PI/8 + k*Math.PI/4; oct.push((CX + 34*Math.cos(a)).toFixed(1) + ',' + (CY + 34*Math.sin(a)).toFixed(1)); }
+el('polygon', { points:oct.join(' '), fill:'url(#coreGrad)', filter:'url(#glow)' }, gTower);
+const oct2 = []; for (let k = 0; k < 8; k++) { const a = Math.PI/8 + k*Math.PI/4; oct2.push((CX + 22*Math.cos(a)).toFixed(1) + ',' + (CY + 22*Math.sin(a)).toFixed(1)); }
+el('polygon', { points:oct2.join(' '), fill:'none', stroke:'#7a3c00', 'stroke-opacity':.5 }, gTower);
+txt('ЯДРО', { x:CX, y:CY + 4, 'text-anchor':'middle', fill:'#2a1500', style:'font-size:12px;font-weight:800;letter-spacing:1px;pointer-events:none' }, gTower);
+txt('модель Claude', { x:CX, y:CY + 54, class:'lbl', 'text-anchor':'middle', fill:'#ffe3a0', style:'font-size:11px;font-weight:600' }, gTower);
+
+/* ---------- мост ---------- */
+const gBr = el('g', { class:'x', 'data-k':'bridge', id:'x-bridge', style:'--c:#ffffff' });
+el('rect', { x:590, y:484, width:72, height:32, fill:'#2a3360', stroke:'#8a96c4', 'stroke-width':1 }, gBr);
+el('path', { d:'M590,484 L662,484 M590,516 L662,516', stroke:'#dfe6ff', 'stroke-width':2.5 }, gBr);
+for (let x = 596; x < 662; x += 9) el('line', { x1:x, y1:480, x2:x, y2:484, stroke:'#dfe6ff', 'stroke-width':1 }, gBr);
+for (let x = 596; x < 662; x += 9) el('line', { x1:x, y1:516, x2:x, y2:520, stroke:'#dfe6ff', 'stroke-width':1 }, gBr);
+el('path', { d:'M590,500 L662,500', stroke:'#ffd76a', 'stroke-width':1, 'stroke-dasharray':'5 4' }, gBr);
+txt('МОСТ API', { x:626, y:472, class:'lbl', 'text-anchor':'middle', fill:'#ffffff', style:'font-size:11px;font-weight:700' }, gBr);
+
+/* ---------- взлётная полоса ---------- */
+const rw = el('g', { style:'pointer-events:none;display:none' });
+el('rect', { x:90, y:250, width:380, height:26, rx:3, fill:'#10162e', stroke:'#b48cff', 'stroke-opacity':.4 }, rw);
+el('path', { d:'M100,263 L460,263', stroke:'#b48cff', 'stroke-opacity':.6, 'stroke-dasharray':'14 10' }, rw);
+txt('ВПП · фоновые задачи', { x:280, y:296, class:'lbl', 'text-anchor':'middle', fill:'#c9b2ff' }, rw);
+
+/* ---------- здания ---------- */
+function building(b) {
+  const z = D[b.d], c = z.c;
+  const g = el('g', { class:'b', id:'b-' + b.id, 'data-k':b.id, style:'--c:' + c });
+  const { x, y, w, h } = b;
+  if (b.shape === 'globe') {
+    const cx = x + w/2, cy = y + h/2, r = w/2;
+    el('circle', { cx, cy, r, fill:'url(#globeGrad)', stroke:c, 'stroke-width':1.5 }, g);
+    [0.35, 0.7].forEach(f => el('ellipse', { cx, cy, rx:r*f, ry:r, fill:'none', stroke:c, 'stroke-opacity':.5 }, g));
+    [-0.5, 0, 0.5].forEach(f => el('ellipse', { cx, cy:cy + r*f, rx:r*Math.sqrt(1 - f*f), ry:5, fill:'none', stroke:c, 'stroke-opacity':.4 }, g));
+    el('circle', { cx, cy, r:r + 8, fill:'none', stroke:c, 'stroke-opacity':.25, 'stroke-dasharray':'3 6', class:'spin',
+                   style:`transform-origin:${cx}px ${cy}px` }, g);
+  } else {
+    el('rect', { x:x + 6, y:y + 6, width:w, height:h, rx:3, fill:'#000', 'fill-opacity':.4 }, g);
+    el('rect', { x, y, width:w, height:h, rx: b.shape === 'hangar' ? 14 : 3, fill:c, 'fill-opacity':.14, stroke:c, 'stroke-width':1.4 }, g);
+    el('rect', { x:x + 2, y:y + 2, width:w - 4, height:4, rx:2, fill:c, 'fill-opacity':.55 }, g);
+    const top = b.shape === 'hall' ? y + 34 : y + 10;
+    const bottom = b.shape === 'hall' ? y + h - 54 : y + h - 6;
+    for (let yy = top; yy < bottom; yy += 10)
+      for (let xx = x + 7; xx < x + w - 9; xx += 9) {
+        const o = rnd(); if (o < .35) continue;
+        const a = { x:xx, y:yy, width:4, height:5, fill:c, opacity:(.25 + o*.7).toFixed(2) };
+        if (rnd() < .1) { a.class = 'fl'; a.style = `animation-delay:${(-rnd()*3).toFixed(2)}s`; }
+        el('rect', a, g);
+      }
+    if (b.shape === 'factory') {
+      for (const dx of [w - 46, w - 24]) {
+        el('rect', { x:x + dx, y:y - 22, width:10, height:22, fill:c, 'fill-opacity':.35, stroke:c }, g);
+        for (let s = 0; s < 2; s++)
+          el('circle', { cx:x + dx + 5, cy:y - 26, r:5, fill:c, 'fill-opacity':.5, class:'smoke', style:`animation-delay:${-(s*1.75 + dx/20).toFixed(2)}s` }, g);
+      }
+    }
+    if (b.shape === 'hall') {
+      el('path', { d:`M${x - 6},${y} L${x + w/2},${y - 26} L${x + w + 6},${y} Z`, fill:c, 'fill-opacity':.2, stroke:c }, g);
+      el('circle', { cx:x + w/2, cy:y - 10, r:6, fill:'#ffd76a', class:'blink' }, g);
+      for (let k = 0; k < Math.floor((w - 20) / 22); k++) el('rect', { x:x + 14 + k*22, y:y + h - 48, width:7, height:42, fill:c, 'fill-opacity':.45 }, g);
+      el('rect', { x:x + 8, y:y + h - 52, width:w - 16, height:4, fill:c, 'fill-opacity':.6 }, g);
+    }
+    if (b.shape === 'house') {
+      el('path', { d:`M${x - 4},${y} L${x + w/2},${y - 22} L${x + w + 4},${y} Z`, fill:c, 'fill-opacity':.25, stroke:c }, g);
+    }
+    if (b.shape === 'tower') {
+      el('line', { x1:x + w/2, y1:y, x2:x + w/2, y2:y - 26, stroke:c, 'stroke-width':2 }, g);
+      el('circle', { cx:x + w/2, cy:y - 28, r:3.5, fill:'#ff4d4d', class:'blink' }, g);
+      for (const r of [10, 18]) el('path', { d:`M${x + w/2 - r},${y - 28 - r/2} A${r},${r} 0 0,1 ${x + w/2 + r},${y - 28 - r/2}`,
+                                          fill:'none', stroke:c, 'stroke-opacity':.5, class:'fl' }, g);
+    }
+  }
+  const lx = b.lx ?? x + w/2, ly = b.ly ?? (b.shape === 'globe' ? y + h + 22 : y + h + 15);
+  txt(b.s, { x:lx, y:ly, class:'lbl', 'text-anchor':b.la || 'middle' }, g);
+}
+B.forEach(building);
+
+/* ---------- трафик ---------- */
+const gTraffic = el('g', { style:'pointer-events:none' });
+function car(path, color, dur, delay, reverse, r = 2.6) {
+  const c = el('circle', { r, fill:color, filter:'url(#glow)' }, gTraffic);
+  const a = el('animateMotion', { dur:dur + 's', repeatCount:'indefinite', path, begin:(-delay) + 's', calcMode:'linear' }, c);
+  if (reverse) { a.setAttribute('keyPoints', '1;0'); a.setAttribute('keyTimes', '0;1'); }
+}
+for (let k = 0; k < 4; k++) { car(HW, '#ffe3a0', 5, k*1.25, false); car(HW, '#9fd8ff', 5, k*1.25 + .6, true); }
+for (const k in SPOKES) for (let j = 0; j < 2; j++) { car(SPOKES[k], D[k].c, 2.4, j*1.2, false); car(SPOKES[k], D[k].c, 2.4, j*1.2 + .6, true); }
+const RING = 'M800,285 A215,215 0 1,1 799.9,285';
+for (let k = 0; k < 8; k++) car(RING, '#ffd76a', 14, k*1.75, false, 2.2);
+for (let k = 0; k < 6; k++) car(PAR, '#c9b2ff', 26, k*4.3, k % 2 === 1, 2);
+for (let k = 0; k < 2; k++) { car(SAT_FREE, '#ff8a8a', 2.2, k*1.1, false); car(SAT_FREE, '#ffd0d0', 2.2, k*1.1 + .55, true); }
+for (let k = 0; k < 3; k++) car(SAT_IN, '#ff8a8a', 3, k, k % 2 === 1, 2);
+const BR = 'M594,500 L662,500';
+for (let k = 0; k < 3; k++) { car(BR, '#ffffff', 1.2, k*.4, false, 2); car(BR, '#7ee8ff', 1.2, k*.4 + .2, true, 2); }
+
+/* ---------- панель ---------- */
+const $ = id => document.getElementById(id);
+const intro = { t:$('info-title').textContent, d:$('info-dist').textContent, c:$('info-conf').textContent, i:$('info-text').textContent };
+function show(k) {
+  const v = INFO[k]; if (!v) return;
+  $('info-title').textContent = v.t; $('info-dist').textContent = v.d;
+  $('info-conf').textContent = v.c; $('info-text').textContent = v.i;
+  const cond = v.c.startsWith('Условно'), deco = v.c === 'Декор';
+  $('info-conf').style.background = cond ? '#3a2c0c' : deco ? '#22273a' : '#0f3326';
+  $('info-conf').style.color = cond ? '#f5b942' : deco ? '#aab3d6' : '#5be39a';
+  updateEnter(k);
+}
+function showIntro() { $('info-title').textContent = intro.t; $('info-dist').textContent = intro.d; $('info-conf').textContent = intro.c; $('info-text').textContent = intro.i; updateEnter(null); }
+let pinned = null;
+svg.addEventListener('mouseover', e => { const g = e.target.closest('[data-k]'); if (g) show(g.dataset.k); });
+svg.addEventListener('mouseleave', () => { if (pinned) show(pinned); else showIntro(); });
+svg.addEventListener('click', e => {
+  const g = e.target.closest('[data-k]'), k = g ? g.dataset.k : null;
+  if (k && k === pinned && K2R[k]) { enterRoom(K2R[k][0], K2R[k][1]); return; }   // второй клик — войти
+  pinned = k; if (pinned) show(pinned); else showIntro();
+});
+svg.addEventListener('dblclick', e => { const g = e.target.closest('[data-k]'); if (g && K2R[g.dataset.k]) enterRoom(K2R[g.dataset.k][0], K2R[g.dataset.k][1]); });
+
+/* ---------- кабинеты: HTML-план с карточками-мониторами ---------- */
+const ROOMS = window.DAVE_ROOMS || {}, K2R = window.DAVE_KEY2ROOM || {};
+let enterKey = null, inRoom = null;
+function updateEnter(k) {
+  const r = !inRoom && k && K2R[k]; enterKey = r ? k : null;
+  $('enter').style.display = r ? 'block' : 'none';
+  if (r) $('enter').textContent = '🚪 Войти: ' + ROOMS[r[0]].title;
+}
+$('enter').onclick = () => { if (enterKey) enterRoom(K2R[enterKey][0], K2R[enterKey][1]); };
+const SKIN = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac', '#d8a07a'];
+function confStyle(c) { return c.startsWith('Условно') ? ['#3a2c0c', '#f5b942'] : c === 'Декор' ? ['#22273a', '#aab3d6'] : ['#0f3326', '#5be39a']; }
+function enterRoom(id, focusKey, quiet) {
+  const room = ROOMS[id]; if (!room) return;
+  inRoom = id; const rv = $('roomview'); rv.style.setProperty('--rc', room.color); rv.style.display = 'flex';
+  $('r-title').textContent = room.title; $('r-title').style.color = room.color; $('r-sub').textContent = room.sub;
+  $('r-wall').innerHTML = ''; $('r-wall').append(room.title); const sm = document.createElement('small'); sm.textContent = room.intro; $('r-wall').append(sm);
+  const box = $('r-desks'); box.innerHTML = '';
+  room.staff.forEach((s, i) => {
+    INFO['st:' + s.key] = { t:s.name, d:s.role, c:s.conf, i:s.text };
+    const d = document.createElement('div'); d.className = 'desk' + (s.live ? ' live' : ''); d.tabIndex = 0; d.dataset.key = s.key;
+    const [cb, cf] = confStyle(s.conf);
+    d.innerHTML = `<div class="mon"><div class="mh"></div><div class="ms" style="color:${s.live ? '#b9ffd0' : s.screen.ok ? '#9ff5c4' : '#ffe0a0'}"><i style="background:${s.screen.ok ? '#5be39a' : '#ffc95a'}"></i><span></span><em class="tag">РАБОТАЕТ</em></div>
+      <div class="ml"></div><div class="mc"><span class="rl"></span><b style="background:${cb};color:${cf}"></b></div></div>
+      <div class="stand"></div><div class="table"></div><div class="who"></div>`;
+    d.querySelector('.mh').textContent = s.screen.head; d.querySelector('.ms span').textContent = s.screen.status;
+    for (const ln of s.screen.lines) { const p = document.createElement('p'); p.textContent = ln; d.querySelector('.ml').append(p); }
+    d.querySelector('.rl').textContent = s.role; d.querySelector('.mc b').textContent = s.conf;
+    for (let k = 0; k <= (s.crew || 0); k++) d.querySelector('.who').insertAdjacentHTML('beforeend',
+      `<div class="pers"><div class="hd" style="background:${SKIN[(i + k * 3) % SKIN.length]}"></div><div class="bd" style="background:${room.color};opacity:${k ? .7 : 1}"></div></div>`);
+    const pick = () => { pinned = 'st:' + s.key; show(pinned); box.querySelectorAll('.desk.on').forEach(x => x.classList.remove('on')); d.classList.add('on'); };
+    d.onclick = pick; d.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } };
+    box.append(d);
+  });
+  INFO['room:' + id] = { t:room.title, d:room.sub, c:room.conf, i:room.intro };
+  if (quiet) return;   // живое обновление: прокрутку, выбор и фокус восстанавливает вызывающий
+  pinned = 'room:' + id; show(pinned); $('floor').scrollTop = 0;
+  const f = focusKey && box.querySelector(`[data-key="${CSS.escape(focusKey)}"]`);
+  if (f) { f.click(); f.scrollIntoView({ block:'center' }); f.focus({ preventScroll:true }); } else $('r-exit').focus({ preventScroll:true });
+}
+
+/* ---------- живое обновление 2D: подписи, огоньки агентов, карточки открытого кабинета ---------- */
+const BI_HANGAR = { 'general-purpose': 'general', Explore: 'explore', Plan: 'plan', fork: 'fork', workflow: 'workflow' };
+function paintLive2D(D) {
+  svg.querySelectorAll('.livedot').forEach(n => n.remove());
+  for (const a of (D.agents || []).concat(D.builtin_agents || [])) {
+    if (!a.live) continue;
+    const g = $('b-' + (BI_HANGAR[a.id] || 'ag-' + a.id)); if (!g) continue;
+    const r = g.querySelector('rect:nth-of-type(2)'); if (!r) continue;
+    const x = +r.getAttribute('x') + +r.getAttribute('width') - 3, y = +r.getAttribute('y') + 3;
+    el('circle', { cx:x, cy:y, r:5, fill:'#37ff7a', class:'livedot', filter:'url(#glow)' }, g);
+  }
+}
+function setLbl(id, text) { const t = $('b-' + id) && $('b-' + id).querySelector('.lbl'); if (t) t.textContent = text; }
+function applyLive2D(D) {
+  const C = D.counts || {}, gc = g => (D.skills || []).filter(s => s.group === g).length;
+  for (const k of Object.keys(INFO)) if (!(k in INFO_BASE) && !k.startsWith('st:') && !k.startsWith('room:')) delete INFO[k];
+  Object.assign(INFO, INFO_BASE);
+  for (const [k, v] of Object.entries(window.DAVE_INFO_PATCH || {})) INFO[k] = { t:v[0], d:v[1], c:v[2], i:v[3] };
+  setLbl('facts', 'Факты · ' + C.memory); setLbl('projects', 'Проекты · ' + C.projects);
+  setLbl('summaries', 'Сводки · ' + C.summaries); setLbl('transcripts', 'Журналы · ' + C.transcripts);
+  setLbl('gamedev', 'Геймдев · ' + gc('gamedev')); setLbl('roblox-s', 'Roblox · ' + gc('roblox-s')); setLbl('workshop', 'Мастерская · ' + gc('workshop'));
+  paintLive2D(D);
+  if (inRoom) {
+    if (!ROOMS[inRoom]) { exitRoom(); return; }
+    const sc = $('floor').scrollTop, pk = pinned, fk = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
+    enterRoom(inRoom, null, true);
+    $('floor').scrollTop = sc;
+    pinned = pk && INFO[pk] ? pk : 'room:' + inRoom;
+    const on = pinned.startsWith('st:') && $('r-desks').querySelector(`[data-key="${CSS.escape(pinned.slice(3))}"]`);
+    if (on) on.classList.add('on');
+    const f = fk && $('r-desks').querySelector(`[data-key="${CSS.escape(fk)}"]`); if (f) f.focus({ preventScroll:true });
+    show(pinned);
+  } else if (pinned && INFO[pinned]) show(pinned);
+}
+paintLive2D(DATA);
+function exitRoom() { if (!inRoom) return; inRoom = null; $('roomview').style.display = 'none'; pinned = null; showIntro(); }
+$('r-exit').onclick = exitRoom;
+addEventListener('keydown', e => { if (e.key === 'Escape') exitRoom(); });
+
+const lg = $('legend');
+lg.innerHTML = '<b style="color:#dfe6ff">Кварталы</b>';
+for (const k in D) lg.insertAdjacentHTML('beforeend', `<div><span class="sw" style="background:${D[k].c}"></span>${D[k].n} — ${D[k].sub}</div>`);
+
+/* ---------- путь сообщения ---------- */
+const STEPS = [
+  { cap:'Ты отправляешь сообщение — текстом, голосом или файлом. Оно въезжает в Ратушу D.A.V.E.', path:'M101,500 L292,500', hl:['b-sergey','b-daveapp'] },
+  { cap:'Ратуша собирает контекст: законы и твой BRAIN.md, каталоги памяти, проектов и навыков, историю чата.', path:'M847,185 C820,320 430,330 300,430', hl:['b-brainmd','b-core-brain','b-facts','b-projects','b-daveapp'] },
+  { cap:'Claude Code везёт весь контекст по главной магистрали через мост API — в облако, к ядру.', path:'M380,500 L594,500 L662,500 L766,500', hl:['x-hw','x-ring','x-bridge'] },
+  { cap:'Ядро читает контекст и думает: слой за слоем выбирает следующий токен.', path:null, hl:['x-core','x-layers','x-ctx'] },
+  { cap:'Нужно действие? Ядро не делает его само — оно пишет заказ. Claude Code исполняет его на ПК, например в PowerShell.', path:'M834,500 L1015,500 L1130,500 L1245,442', hl:['x-ring','b-shell'] },
+  { cap:'Результат возвращается в контекст и снова едет в ядро. Шаги 4 → 5 → 6 крутятся, пока задача не решена; независимые заказы идут параллельно.', path:'M1245,442 L1130,500 L1015,500 L834,500', hl:['x-ctx','x-par'] },
+  { cap:'Готовый ответ течёт токенами обратно через мост — в окно D.A.V.E. к тебе (и в Telegram). Уроки задачи ложатся в архив памяти.', path:'M766,500 L594,500 L101,500', hl:['b-sergey','b-telegram','b-facts'] },
+];
+const dot = el('circle', { r:8, fill:'#ffffff', filter:'url(#glow)', opacity:0, style:'pointer-events:none' });
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function move(d, speed = .38) {
+  return new Promise(res => {
+    const p = el('path', { d, fill:'none', stroke:'none' }, defs);
+    const L = p.getTotalLength(), dur = Math.max(1100, L / speed);
+    const t0 = performance.now(); let last = 0;
+    dot.setAttribute('opacity', 1);
+    (function frame(now) {
+      const t = Math.min(1, (now - t0) / dur), e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
+      const pt = p.getPointAtLength(L * e);
+      dot.setAttribute('cx', pt.x); dot.setAttribute('cy', pt.y);
+      if (now - last > 40) { last = now; el('circle', { cx:pt.x, cy:pt.y, r:5, fill:'#ffd76a', class:'trail' }).addEventListener('animationend', ev => ev.target.remove()); }
+      if (t < 1) setTimeout(() => frame(performance.now()), 16); else { p.remove(); res(); }
+    })(t0);
+  });
+}
+function setHl(ids) { document.querySelectorAll('.hl').forEach(n => n.classList.remove('hl')); ids.forEach(i => $(i)?.classList.add('hl')); }
+$('run').addEventListener('click', async () => {
+  const btn = $('run'), box = $('trace');
+  btn.disabled = true; box.style.display = 'block';
+  for (let s = 0; s < STEPS.length; s++) {
+    const st = STEPS[s];
+    box.innerHTML = `<b>Шаг ${s + 1} из ${STEPS.length}</b><br>${st.cap}`;
+    setHl(st.hl);
+    if (st.path) await move(st.path);
+    else { dot.setAttribute('cx', CX); dot.setAttribute('cy', CY); $('coreWrap').classList.add('thinking'); await sleep(2200); $('coreWrap').classList.remove('thinking'); }
+    await sleep(1300);
+  }
+  dot.setAttribute('opacity', 0); setHl([]);
+  box.innerHTML = '<b>Круг замкнут.</b><br>Так проходит каждое сообщение. В сложной задаче шаги 4–6 повторяются десятки раз — по мосту каждый раз едет весь контекст.';
+  btn.disabled = false; btn.textContent = '↻ Ещё раз';
+});
+</script>
+<script src="live.js" data-src="data.js"></script>
+<script>
+document.getElementById('map').appendChild(document.getElementById('live-badge'));
+DAVE_LIVE.onUpdate(applyLive2D);
+</script>
+</body>
+</html>
