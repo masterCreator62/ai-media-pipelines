@@ -1,5 +1,9 @@
 # AI Media Automation — Portfolio
 
+[![Watch the 2-minute demo](media/demo_thumbnail.jpg)](media/portfolio_demo.mp4)
+
+**[▶ Demo video, 2:21](media/portfolio_demo.mp4)** — the pipelines at work: a one-line request becomes a rendered Short, QA blocks a broken render until it is fixed, then music Shorts, highlight cutting, local image generation and Blender → Roblox weapons. AI voice (edge-tts).
+
 **Sergey** · AI-native media engineer ("vibe coder") · Python · ffmpeg · LLM agents · Blender · Roblox/Luau
 
 I build automated content factories with AI coding agents (Claude Code): a script or a JSON brief goes in, a finished, fact-checked, branded video, image set or game asset comes out, together with upload metadata. Everything below runs on one consumer PC (RTX 3060 Ti, 8 GB VRAM) at near-zero running cost.
