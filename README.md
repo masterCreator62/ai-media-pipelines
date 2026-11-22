@@ -1,8 +1,8 @@
 # AI Media Automation — Portfolio
 
-[![Watch the 2-minute demo](media/demo_thumbnail.jpg)](media/portfolio_demo.mp4)
+https://github.com/user-attachments/assets/ec4170b8-56f6-4fb9-9e32-394639679019
 
-**[▶ Demo video, 2:21](media/portfolio_demo.mp4)** — the pipelines at work: a one-line request becomes a rendered Short, QA blocks a broken render until it is fixed, then music Shorts, highlight cutting, local image generation and Blender → Roblox weapons. AI voice (edge-tts).
+**Demo video, 2:21** ([full-HD file](media/portfolio_demo.mp4)) — the pipelines at work: a one-line request becomes a rendered Short, QA blocks a broken render until it is fixed, then music Shorts, highlight cutting, local image generation and Blender → Roblox weapons. AI voice (edge-tts).
 
 **Sergey** · AI-native media engineer ("vibe coder") · Python · ffmpeg · LLM agents · Blender · Roblox/Luau
 
