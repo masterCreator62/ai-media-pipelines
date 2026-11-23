@@ -1,4 +1,4 @@
-# 5. Blender → Roblox 3D pipeline (Sugar Bloom)
+# 4. Blender → Roblox 3D pipeline (Sugar Bloom)
 
 **Problem.** A Roblox shooter needs a whole arsenal: 17 weapons, each with rarity skins, stylised, light enough for phones (≤ 6,000 triangles), and consistent in style. Buying or hand-modelling all of it was out of budget.
 

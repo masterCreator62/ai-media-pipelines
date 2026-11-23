@@ -1,4 +1,4 @@
-# 4. Local image generation (ComfyUI)
+# 3. Local image generation (ComfyUI)
 
 **Problem.** Covers, thumbnails, icons and game art in volume. Paid image APIs add up, and many open models have licences that forbid commercial use.
 

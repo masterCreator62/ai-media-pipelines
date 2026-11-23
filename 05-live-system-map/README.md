@@ -1,4 +1,4 @@
-# 6. Live system map ("D.A.V.E. City")
+# 5. Live system map ("D.A.V.E. City")
 
 **Problem.** An AI workstation with dozens of chats, sub-agents, skills, scheduled jobs and local services is hard to keep track of.
 
